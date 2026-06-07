@@ -106,6 +106,16 @@ E2E tests are optional locally but should be verified before merging features th
 
 ---
 
+## Document Conventions
+
+- documents will be written in "documentation/" directory
+- documents will be written as MD file
+- metadata will be added in a YAML block after the title
+- date, author, model name and version will be added as metadata
+- sources will be added as metadata
+
+--- 
+
 ## Coding Conventions
 
 ### NestJS patterns
@@ -152,6 +162,7 @@ E2E tests are optional locally but should be verified before merging features th
 
 | Route | Method | Auth |
 |-------|--------|------|
+| `/health` | GET | public |
 | `/auth/register` | POST | public |
 | `/auth/login` | POST | public |
 | `/players/:userId` | GET | — |

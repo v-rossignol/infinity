@@ -22,7 +22,8 @@ describe('AppModule (e2e)', () => {
   it('AppService returns health status', () => {
     const appService = app.get(AppService);
     const health = appService.getHealth();
-    expect(health.status).toBe('ok');
-    expect(health.service).toBe('infinity-server');
+    expect(health.status).toBe('OK');
+    expect(health.name).toBe('infinity-server');
+    expect(health.version).toBeDefined();
   });
 });

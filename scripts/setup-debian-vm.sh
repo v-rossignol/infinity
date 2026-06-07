@@ -132,7 +132,7 @@ add_user_to_docker_group() {
   fi
 
   log "adding '${TARGET_USER}' to the docker group"
-  usermod -aG docker "${TARGET_USER}"
+  /usr/sbin/usermod -aG docker "${TARGET_USER}"
 }
 
 verify_installation() {

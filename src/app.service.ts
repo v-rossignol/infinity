@@ -1,12 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { appConfig } from './config/app.config';
 
 @Injectable()
 export class AppService {
   getHealth() {
     return {
-      status: 'ok',
-      service: 'infinity-server',
-      timestamp: new Date().toISOString(),
+      name: appConfig.name,
+      version: appConfig.version,
+      status: 'OK',
     };
   }
 }

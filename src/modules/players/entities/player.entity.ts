@@ -30,7 +30,7 @@ export class Player {
   @Column({ default: 0 })
   galaxyZ: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   currentPlanetId: string | null;
 
   @Column({ default: 0 })
