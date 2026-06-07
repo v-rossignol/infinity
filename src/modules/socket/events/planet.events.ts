@@ -1,0 +1,6 @@
+export const PLANET_EVENTS = {
+  MOVE: 'PLANET_MOVE',
+  UPDATE: 'PLANET_UPDATE',
+  JOIN: 'PLANET_JOIN',
+  LEAVE: 'PLANET_LEAVE',
+} as const;

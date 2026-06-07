@@ -1,0 +1,5 @@
+export const SYSTEM_EVENTS = {
+  JOIN: 'SYSTEM_JOIN',
+  LEAVE: 'SYSTEM_LEAVE',
+  UPDATE: 'SYSTEM_UPDATE',
+} as const;
