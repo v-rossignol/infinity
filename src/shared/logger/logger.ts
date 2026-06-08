@@ -13,8 +13,7 @@ const ALL_LOG_LEVELS = Object.keys(LEVEL_PRIORITY) as LogLevel[];
 
 function resolveLogLevels(): LogLevel[] {
   const configured = process.env.LOG_LEVEL?.toLowerCase() as LogLevel | undefined;
-  const defaultLevel: LogLevel =
-    process.env.NODE_ENV === 'production' ? 'log' : 'verbose';
+  const defaultLevel: LogLevel = process.env.NODE_ENV === 'production' ? 'log' : 'verbose';
   const minLevel = configured ?? defaultLevel;
   const minPriority = LEVEL_PRIORITY[minLevel] ?? LEVEL_PRIORITY.log;
 

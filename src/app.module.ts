@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MongooseModule } from '@nestjs/mongoose';
+import { RedisModule } from './modules/redis/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PlayersModule } from './modules/players/players.module';
 import { GalaxyModule } from './modules/galaxy/galaxy.module';
@@ -18,8 +19,7 @@ import { RequestLoggerMiddleware } from './shared/logger';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) =>
-        getPostgresConfig(configService),
+      useFactory: (configService: ConfigService) => getPostgresConfig(configService),
       inject: [ConfigService],
     }),
     MongooseModule.forRootAsync({
@@ -29,6 +29,7 @@ import { RequestLoggerMiddleware } from './shared/logger';
       }),
       inject: [ConfigService],
     }),
+    RedisModule,
     AuthModule,
     PlayersModule,
     GalaxyModule,

@@ -1,7 +1,7 @@
 # Infinity Server — REST & WebSocket API
 
 ```yaml
-date: 2026-06-07
+date: 2026-06-08
 author: Roro LeSage
 model: Composer
 type: API Reference
@@ -15,6 +15,7 @@ sources:
   - src/main.ts
   - src/config/app.config.ts
   - src/config/socket.config.ts
+  - documentation/specifications/galaxy-phase-4-api-design.md
 ```
 
 Reference for **implemented** HTTP routes and Socket.IO events on the Infinity NestJS server. This document reflects the current codebase, not planned contracts (see `documentation/stellar-gate-api.md` for the StellarGate client auth target).
@@ -25,11 +26,13 @@ Reference for **implemented** HTTP routes and Socket.IO events on the Infinity N
 
 | Environment | URL |
 |-------------|-----|
-| Local development | `http://localhost:4000` |
+| Local development | `http://localhost:4000/infinity` |
 
 Port is configurable via the `PORT` environment variable (default `4000`).
 
-There is **no global route prefix** today (`main.ts` does not call `setGlobalPrefix`). Routes are served at the paths listed below (e.g. `/auth/login`, not `/infinity/auth/login`).
+### Global route prefix
+
+All REST routes are mounted under **`/infinity`** via `app.setGlobalPrefix('infinity')` in `src/main.ts`. Paths in this document include that prefix (e.g. `/infinity/auth/login`). Socket.IO connects to the server root (`http://localhost:4000`) — there is no `/infinity` prefix on the WebSocket URL.
 
 ---
 
@@ -60,10 +63,11 @@ CORS is enabled with `origin: '*'` and `credentials: true` (development only —
 | Aspect | Value |
 |--------|-------|
 | Mechanism | JWT signed with `JWT_SECRET` |
-| Token delivery | JSON field `access_token` on `POST /auth/login` and `POST /auth/register` |
+| Token delivery | JSON field `access_token` on `POST /infinity/auth/login` and `POST /infinity/auth/register` |
 | Token lifetime | `1h` (`appConfig.jwt.expiresIn`) |
-| Protected routes | **None** — `JwtStrategy` is registered but no controller uses `@UseGuards(JwtAuthGuard)` yet |
-| Expected header (when guards are added) | `Authorization: Bearer <access_token>` |
+| Header | `Authorization: Bearer <access_token>` |
+| Protected routes | **Cube and star endpoints** (`/infinity/cubes/*`, `/infinity/stars/*`) require a valid JWT |
+| Public routes | Health, auth, players, legacy galaxy star systems, planets, resources |
 
 ---
 
@@ -73,20 +77,25 @@ CORS is enabled with `origin: '*'` and `credentials: true` (development only —
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/health` | Public | Server health check |
-| `POST` | `/auth/register` | Public | Create account and return JWT |
-| `POST` | `/auth/login` | Public | Authenticate and return JWT |
-| `GET` | `/players/:userId` | Public | Get or create player profile for a user |
-| `PATCH` | `/players/:playerId/position` | Public | Update player position |
-| `GET` | `/galaxy/systems/:systemId` | Public | Get or generate a star system |
-| `GET` | `/planets/:planetId` | Public | Get or generate a planet |
-| `GET` | `/resources/planet/:planetId` | Public | List resources on a planet |
+| `GET` | `/infinity/health` | Public | Server health check |
+| `POST` | `/infinity/auth/register` | Public | Create account and return JWT |
+| `POST` | `/infinity/auth/login` | Public | Authenticate and return JWT |
+| `GET` | `/infinity/players/:userId` | Public | Get or create player profile for a user |
+| `PATCH` | `/infinity/players/:playerId/position` | Public | Update player position |
+| `GET` | `/infinity/galaxy/systems/:systemId` | Public | Get or generate a legacy star system |
+| `GET` | `/infinity/cubes/by-name/:name` | JWT | Get cube and stars by hash-based name |
+| `GET` | `/infinity/cubes/:x/:y/:z` | JWT | Get or generate cube and stars by center coordinates |
+| `GET` | `/infinity/cubes/:x/:y/:z/stars` | JWT | Get or generate cube; return stars only |
+| `GET` | `/infinity/stars/:id` | JWT | Get star by id |
+| `GET` | `/infinity/stars?cube_id={uuid}` | JWT | List stars in a cube |
+| `GET` | `/infinity/planets/:planetId` | Public | Get or generate a planet |
+| `GET` | `/infinity/resources/planet/:planetId` | Public | List resources on a planet |
 
 ---
 
 ### Health
 
-#### `GET /health`
+#### `GET /infinity/health`
 
 Lightweight health check. Does not verify database connectivity.
 
@@ -110,7 +119,7 @@ Lightweight health check. Does not verify database connectivity.
 
 ### Auth
 
-#### `POST /auth/register`
+#### `POST /infinity/auth/register`
 
 Create a new user account. On success, returns a JWT (same shape as login).
 
@@ -125,7 +134,7 @@ Create a new user account. On success, returns a JWT (same shape as login).
 **Example request**
 
 ```http
-POST /auth/register
+POST /infinity/auth/register
 Content-Type: application/json
 
 {
@@ -152,7 +161,7 @@ Content-Type: application/json
 
 ---
 
-#### `POST /auth/login`
+#### `POST /infinity/auth/login`
 
 Validate credentials and return a JWT.
 
@@ -166,7 +175,7 @@ Validate credentials and return a JWT.
 **Example request**
 
 ```http
-POST /auth/login
+POST /infinity/auth/login
 Content-Type: application/json
 
 {
@@ -207,7 +216,7 @@ JWT payload (decoded):
 
 Player data is stored in **PostgreSQL** (TypeORM `Player` entity).
 
-#### `GET /players/:userId`
+#### `GET /infinity/players/:userId`
 
 Fetch the player profile linked to a user. If none exists, a new player is created with default position `(0, 0, 0)`.
 
@@ -238,7 +247,7 @@ The `user` relation is not eagerly loaded in the response.
 
 ---
 
-#### `PATCH /players/:playerId/position`
+#### `PATCH /infinity/players/:playerId/position`
 
 Partially update a player's galaxy or planet coordinates.
 
@@ -262,7 +271,7 @@ Partially update a player's galaxy or planet coordinates.
 **Example request**
 
 ```http
-PATCH /players/a1b2c3d4-e5f6-7890-abcd-ef1234567890/position
+PATCH /infinity/players/a1b2c3d4-e5f6-7890-abcd-ef1234567890/position
 Content-Type: application/json
 
 {
@@ -277,7 +286,7 @@ Content-Type: application/json
 
 **Success response — 200 OK**
 
-Returns the updated `Player` object (same shape as `GET /players/:userId`).
+Returns the updated `Player` object (same shape as `GET /infinity/players/:userId`).
 
 **Error responses**
 
@@ -290,9 +299,212 @@ Returns the updated `Player` object (same shape as `GET /players/:userId`).
 
 ### Galaxy
 
+The galaxy module exposes two models:
+
+- **Cube-based galaxy** (new) — cubes and stars in MongoDB (`cubes`, `stars` collections), cached in **Redis** (TTL 2 minutes). Protected by JWT.
+- **Legacy star systems** — procedural 2D star systems in MongoDB; public, unchanged.
+
+See also: `documentation/galaxy/cube-based-star-system.md`, `documentation/specifications/galaxy-phase-4-api-design.md`.
+
+---
+
+#### Cubes (JWT required)
+
+Cube centers lie on a 10 LY grid (e.g. `(0, 0, 0)`, `(10, 10, 10)`, `(-10, 0, 20)`). Coordinates in the URL are the cube **center**, not the minimum corner.
+
+##### `GET /infinity/cubes/:x/:y/:z`
+
+Find an existing cube by center coordinates, or **generate and persist** a new one if absent.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `x` | number | Cube center X (light-years; multiple of 10) |
+| `y` | number | Cube center Y |
+| `z` | number | Cube center Z |
+
+**Example request**
+
+```http
+GET /infinity/cubes/10/10/10
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Success response — 200 OK**
+
+```json
+{
+  "cube": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "kikyhk",
+    "origin": { "x": 10, "y": 10, "z": 10 },
+    "star_ids": ["Alpha kikyhk", "Beta kikyhk"]
+  },
+  "stars": [
+    {
+      "id": "Alpha kikyhk",
+      "local_coords": { "x": 1.0, "y": 2.0, "z": 3.0 },
+      "cube_id": "550e8400-e29b-41d4-a716-446655440000",
+      "properties": { "type": "yellow" }
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `cube.id` | UUID string | Cube primary key |
+| `cube.name` | string | Hash-based label (CRC32 + Base36 of origin) |
+| `cube.origin` | object | Cube center `{ x, y, z }` in light-years |
+| `cube.star_ids` | string[] | Star identifiers (Greek letter + cube name) |
+| `stars[].id` | string | e.g. `"Alpha kikyhk"` |
+| `stars[].local_coords` | object | Position within cube, relative to minimum corner |
+| `stars[].cube_id` | UUID string | Parent cube `id` |
+| `stars[].properties.type` | string | `yellow`, `red`, `blue`, or `white` |
+
+**Error responses**
+
+| Status | Condition |
+|--------|-----------|
+| `401 Unauthorized` | Missing or invalid JWT |
+| `400 Bad Request` | Invalid coordinate values or origin not grid-aligned (not a multiple of 10) |
+
+> **Note:** Star count (5–20), positions, and types are random on first generation. The cube `name` is deterministic from `origin`. Once persisted, the same `origin` always returns the same cube.
+
+---
+
+##### `GET /infinity/cubes/:x/:y/:z/stars`
+
+Same find-or-create behavior as `GET /infinity/cubes/:x/:y/:z`, but returns only the star list.
+
+**Success response — 200 OK**
+
+```json
+{
+  "stars": [
+    {
+      "id": "Alpha kikyhk",
+      "local_coords": { "x": 1.0, "y": 2.0, "z": 3.0 },
+      "cube_id": "550e8400-e29b-41d4-a716-446655440000",
+      "properties": { "type": "yellow" }
+    }
+  ]
+}
+```
+
+---
+
+##### `GET /infinity/cubes/by-name/:name`
+
+Look up a cube by its hash-based name. Does **not** generate a new cube.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `name` | string | Cube name (e.g. `kikyhk`) |
+
+**Example request**
+
+```http
+GET /infinity/cubes/by-name/kikyhk
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Success response — 200 OK**
+
+Same shape as `GET /infinity/cubes/:x/:y/:z` (`{ cube, stars }`).
+
+**Error responses**
+
+| Status | Condition |
+|--------|-----------|
+| `404 Not Found` | No cube with that name in MongoDB or Redis cache |
+| `401 Unauthorized` | Missing or invalid JWT |
+
+---
+
+#### Stars (JWT required)
+
+##### `GET /infinity/stars/:id`
+
+Fetch a single star by its identifier.
+
+**Path parameters**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `id` | string | Star id (URL-encode spaces: `Alpha%20kikyhk`) |
+
+**Example request**
+
+```http
+GET /infinity/stars/Alpha%20kikyhk
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Success response — 200 OK**
+
+```json
+{
+  "id": "Alpha kikyhk",
+  "local_coords": { "x": 1.0, "y": 2.0, "z": 3.0 },
+  "cube_id": "550e8400-e29b-41d4-a716-446655440000",
+  "properties": { "type": "yellow" }
+}
+```
+
+**Error responses**
+
+| Status | Condition |
+|--------|-----------|
+| `404 Not Found` | Star not found |
+| `401 Unauthorized` | Missing or invalid JWT |
+
+---
+
+##### `GET /infinity/stars?cube_id={uuid}`
+
+List all stars belonging to a cube.
+
+**Query parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `cube_id` | UUID string | yes | Parent cube `id` |
+
+**Example request**
+
+```http
+GET /infinity/stars?cube_id=550e8400-e29b-41d4-a716-446655440000
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Success response — 200 OK**
+
+```json
+{
+  "stars": []
+}
+```
+
+Returns an empty array when the cube has no stars or the UUID is unknown.
+
+**Error responses**
+
+| Status | Condition |
+|--------|-----------|
+| `400 Bad Request` | Missing or invalid `cube_id` |
+| `401 Unauthorized` | Missing or invalid JWT |
+
+---
+
+#### Legacy star systems (public)
+
 Star systems are stored in **MongoDB** (Mongoose). Systems are **generated on first access** if the `systemId` does not exist (deterministic from seed).
 
-#### `GET /galaxy/systems/:systemId`
+##### `GET /infinity/galaxy/systems/:systemId`
 
 **Path parameters**
 
@@ -303,7 +515,7 @@ Star systems are stored in **MongoDB** (Mongoose). Systems are **generated on fi
 **Example request**
 
 ```http
-GET /galaxy/systems/alpha-centauri
+GET /infinity/galaxy/systems/alpha-centauri
 ```
 
 **Success response — 200 OK**
@@ -354,7 +566,7 @@ Planet count and layout are procedurally derived from `systemId`. The same `syst
 
 Planet surface data is stored in **MongoDB**. Planets are **generated on first access** if the `planetId` does not exist.
 
-#### `GET /planets/:planetId`
+#### `GET /infinity/planets/:planetId`
 
 **Path parameters**
 
@@ -365,7 +577,7 @@ Planet surface data is stored in **MongoDB**. Planets are **generated on first a
 **Example request**
 
 ```http
-GET /planets/alpha-centauri_planet_0
+GET /infinity/planets/alpha-centauri_planet_0
 ```
 
 **Success response — 200 OK**
@@ -406,7 +618,7 @@ GET /planets/alpha-centauri_planet_0
 
 Resource deposits are stored in **MongoDB** as separate documents linked by `planetId`.
 
-#### `GET /resources/planet/:planetId`
+#### `GET /infinity/resources/planet/:planetId`
 
 List all resource nodes on a planet.
 
@@ -470,12 +682,93 @@ const socket = io('http://localhost:4000', { transports: ['websocket'] });
 
 | Direction | Event | Description |
 |-----------|-------|-------------|
-| Client → Server | `GALAXY_MOVE` | Player moved in galaxy space |
+| Client → Server | `GALAXY_MOVE` | Player moved in galaxy space (position broadcast only) |
 | Server → Client | `GALAXY_UPDATE` | Broadcast galaxy movement to all clients |
+| Client → Server | `REQUEST_CUBE` | Request cube + stars for a **global** position |
+| Server → Client | `CUBE_DATA` | Cube and stars payload (to requesting client) |
+| Client → Server | `REQUEST_STAR` | Request star data by id |
+| Server → Client | `STAR_DATA` | Star document (to requesting client) |
+| Server → Client | `GALAXY_ERROR` | Error response for cube/star requests |
 | Client → Server | `PLANET_MOVE` | Player moved on a planet surface |
 | Server → Client | `PLANET_UPDATE` | Planet-room movement update |
 
-Authentication is **not** enforced on WebSocket connections today.
+Authentication is **not** enforced on WebSocket connections.
+
+---
+
+### `REQUEST_CUBE` (client → server)
+
+Request cube and star data for the cube containing a **global** galaxy position. The server resolves the cube center, find-or-creates the cube, joins the client to room `cube:{uuid}`, and responds with `CUBE_DATA`.
+
+**Payload**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `x` | number | Global galaxy X (light-years) |
+| `y` | number | Global galaxy Y |
+| `z` | number | Global galaxy Z |
+
+**Example**
+
+```javascript
+socket.emit('REQUEST_CUBE', { x: 7.1, y: 8.4, z: 10.6 });
+```
+
+**Server behavior**
+
+- Resolves cube center from global position (e.g. `(7.1, 8.4, 10.6)` → center `(10, 10, 10)`)
+- Loads or generates cube via `CubeService.getOrCreateByOrigin`
+- Joins client to Socket.IO room `cube:{cube.id}`
+- Emits `CUBE_DATA` to the **requesting client only**
+
+---
+
+### `CUBE_DATA` (server → client)
+
+**Payload:** same shape as `GET /infinity/cubes/:x/:y/:z` — `{ cube, stars }`.
+
+```javascript
+socket.on('CUBE_DATA', (data) => {
+  // { cube: { id, name, origin, star_ids }, stars: [...] }
+});
+```
+
+---
+
+### `REQUEST_STAR` (client → server)
+
+**Payload**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `starId` | string | Star identifier (e.g. `"Alpha kikyhk"`) |
+
+```javascript
+socket.emit('REQUEST_STAR', { starId: 'Alpha kikyhk' });
+```
+
+**Server behavior**
+
+- Loads star via `StarService.findById`
+- Emits `STAR_DATA` or `GALAXY_ERROR` (404) to the requesting client
+
+---
+
+### `STAR_DATA` (server → client)
+
+**Payload:** same shape as `GET /infinity/stars/:id`.
+
+---
+
+### `GALAXY_ERROR` (server → client)
+
+**Payload**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `event` | string | Source event (`REQUEST_CUBE` or `REQUEST_STAR`) |
+| `message` | string | Error description |
+| `statusCode` | number | HTTP-style code (400, 404, 500) |
 
 ---
 
@@ -501,6 +794,7 @@ socket.emit('GALAXY_MOVE', { x: 120.5, y: -45.2, z: 10 });
 
 - Logs the movement (via `GalaxyService.handlePlayerMove`)
 - Broadcasts `GALAXY_UPDATE` to **all** connected clients
+- Does **not** load or emit cube data (use `REQUEST_CUBE` separately)
 
 ---
 
@@ -579,23 +873,30 @@ sequenceDiagram
   participant WS as Socket.IO
   participant DB as PostgreSQL / MongoDB
 
-  Client->>REST: POST /auth/register
+  Client->>REST: POST /infinity/auth/register
   REST->>DB: Create User
   REST-->>Client: { access_token }
 
-  Client->>REST: GET /players/{userId}
+  Client->>REST: GET /infinity/players/{userId}
   REST->>DB: Find or create Player
   REST-->>Client: Player profile
 
-  Client->>REST: GET /galaxy/systems/{systemId}
+  Client->>REST: GET /infinity/cubes/{x}/{y}/{z} (Bearer token)
+  REST->>DB: Find or generate Cube + Stars
+  REST-->>Client: { cube, stars }
+
+  Client->>REST: GET /infinity/galaxy/systems/{systemId}
   REST->>DB: Find or generate StarSystem
   REST-->>Client: Star system + planet list
 
-  Client->>REST: GET /planets/{planetId}
+  Client->>REST: GET /infinity/planets/{planetId}
   REST->>DB: Find or generate Planet
   REST-->>Client: Planet surface data
 
   Client->>WS: connect
+  Client->>WS: REQUEST_CUBE { x, y, z } (global)
+  WS-->>Client: CUBE_DATA { cube, stars }
+
   Client->>WS: GALAXY_MOVE { x, y, z }
   WS-->>Client: GALAXY_UPDATE (broadcast)
 ```
@@ -607,6 +908,8 @@ sequenceDiagram
 | Document | Scope |
 |----------|-------|
 | `documentation/stellar-gate-api.md` | Target auth contract for the StellarGate client (cookie-based JWT, `/infinity` prefix) |
+| `documentation/galaxy/README.md` | Galaxy documentation index (design, naming, phase specs) |
+| `documentation/specifications/galaxy-phase-4-api-design.md` | Phase 4 cube/star REST implementation spec |
 | `AGENTS.md` | Module architecture, env vars, dev commands |
 | `documentation/server-setup.md` | Deployment and infrastructure |
 
@@ -614,8 +917,9 @@ sequenceDiagram
 
 ## Not implemented (out of scope for this reference)
 
-- JWT guards on protected routes
 - Cookie-based session auth
-- Global `/infinity` route prefix
-- Redis-backed session or position caching
+- `GET /infinity/coordinates/convert` (coordinate utility endpoint)
+- JWT on WebSocket connections
+- `CUBE_UPDATED` broadcasts (deferred until planets-on-star)
 - REST endpoint for resource harvesting (`ResourcesService.harvest` is service-only)
+- Redis-backed session or player position caching (Redis is used for cube cache only)

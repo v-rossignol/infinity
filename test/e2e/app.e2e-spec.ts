@@ -1,29 +1,36 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import { AppModule } from '../../src/app.module';
-import { AppService } from '../../src/app.service';
+import request from 'supertest';
+import { createE2eApp, apiPath, shouldRunE2e } from './helpers/create-e2e-app';
 
-describe('AppModule (e2e)', () => {
+const describeE2e = shouldRunE2e() ? describe : describe.skip;
+
+describeE2e('AppModule (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
-  });
+    app = await createE2eApp();
+  }, 60_000);
 
   afterAll(async () => {
     await app.close();
   });
 
-  it('AppService returns health status', () => {
-    const appService = app.get(AppService);
-    const health = appService.getHealth();
-    expect(health.status).toBe('OK');
-    expect(health.name).toBe('infinity-server');
-    expect(health.version).toBeDefined();
+  it('GET /infinity/health returns OK', async () => {
+    const response = await request(app.getHttpServer()).get(apiPath('/health')).expect(200);
+
+    expect(response.body.status).toBe('OK');
+    expect(response.body.name).toBe('infinity-server');
+    expect(response.body.version).toBeDefined();
+  });
+});
+
+describe('AppModule (e2e) skipped hint', () => {
+  it('documents how to run app e2e tests', () => {
+    if (shouldRunE2e()) {
+      expect(true).toBe(true);
+      return;
+    }
+
+    expect(process.env.RUN_E2E).not.toBe('1');
   });
 });

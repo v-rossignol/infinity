@@ -160,16 +160,25 @@ E2E tests are optional locally but should be verified before merging features th
 
 ## REST API Surface
 
+All routes are prefixed with **`/infinity`** (`src/main.ts`).
+
 | Route | Method | Auth |
 |-------|--------|------|
-| `/health` | GET | public |
-| `/auth/register` | POST | public |
-| `/auth/login` | POST | public |
-| `/players/:userId` | GET | — |
-| `/players/:playerId/position` | PATCH | — |
-| `/galaxy/systems/:systemId` | GET | — |
-| `/planets/:planetId` | GET | — |
-| `/resources/planet/:planetId` | GET | — |
+| `/infinity/health` | GET | public |
+| `/infinity/auth/register` | POST | public |
+| `/infinity/auth/login` | POST | public |
+| `/infinity/players/:userId` | GET | — |
+| `/infinity/players/:playerId/position` | PATCH | — |
+| `/infinity/cubes/:x/:y/:z` | GET | JWT |
+| `/infinity/cubes/:x/:y/:z/stars` | GET | JWT |
+| `/infinity/cubes/by-name/:name` | GET | JWT |
+| `/infinity/stars/:id` | GET | JWT |
+| `/infinity/stars?cube_id={uuid}` | GET | JWT |
+| `/infinity/galaxy/systems/:systemId` | GET | — |
+| `/infinity/planets/:planetId` | GET | — |
+| `/infinity/resources/planet/:planetId` | GET | — |
+
+See `documentation/api.md` for request/response shapes and Socket.IO events.
 
 ---
 
@@ -178,5 +187,5 @@ E2E tests are optional locally but should be verified before merging features th
 - Do **not** commit `.env` — only `.env.example`
 - Do **not** enable `synchronize: true` in production TypeORM config
 - Do **not** expose `JWT_SECRET` in logs or responses
-- Redis integration is **incomplete** — don't assume it works end-to-end yet
+- Redis integration is **partial** — cube cache is wired; session/position caching is not yet implemented
 - The `docker/docker-compose.yml` starts databases only, **not** the NestJS app

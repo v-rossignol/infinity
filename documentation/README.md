@@ -9,7 +9,7 @@ Serveur NestJS pour le jeu **Infinity** — gestion des joueurs, synchronisation
 - **Socket.IO 4** — WebSockets multijoueur
 - **PostgreSQL 16** + **TypeORM** — données structurées (joueurs, comptes)
 - **MongoDB 7** + **Mongoose** — systèmes stellaires et planètes
-- **Redis 7** — cache sessions et positions
+- **Redis 7** — cache cubes (galaxy) ; sessions/positions prévus
 
 ## Démarrage rapide
 
@@ -37,8 +37,17 @@ Le serveur écoute sur [http://localhost:4000](http://localhost:4000).
 | `npm run build` | Compilation TypeScript |
 | `npm run start:prod` | Production (`dist/main`) |
 | `npm run test` | Tests unitaires |
-| `npm run test:e2e` | Tests end-to-end |
+| `npm run test:e2e` | Tests end-to-end (galaxy ignorés sans `RUN_E2E=1`) |
+| `npm run test:e2e:docker` | E2E galaxy avec `RUN_E2E=1` (Docker requis) |
 | `npm run lint` | ESLint |
+
+## Documentation
+
+| Document | Contenu |
+|----------|---------|
+| [api.md](./api.md) | API REST et WebSocket (préfixe `/infinity`) |
+| [galaxy/README.md](./galaxy/README.md) | Galaxie par cubes — index et specs |
+| [server-setup.md](./server-setup.md) | Architecture des modules |
 
 ## Structure
 

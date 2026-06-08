@@ -1,9 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
-export const getPostgresConfig = (
-  configService: ConfigService,
-): TypeOrmModuleOptions => ({
+export const getPostgresConfig = (configService: ConfigService): TypeOrmModuleOptions => ({
   type: 'postgres',
   host: configService.get<string>('POSTGRES_HOST', 'localhost'),
   port: parseInt(configService.get<string>('POSTGRES_PORT', '5432'), 10),
@@ -16,10 +14,7 @@ export const getPostgresConfig = (
 });
 
 export const getMongoUri = (configService: ConfigService): string =>
-  configService.get<string>(
-    'MONGO_URI',
-    'mongodb://localhost:27017/infinity',
-  );
+  configService.get<string>('MONGO_URI', 'mongodb://localhost:27017/infinity');
 
 export const getRedisConfig = (configService: ConfigService) => ({
   host: configService.get<string>('REDIS_HOST', 'localhost'),
