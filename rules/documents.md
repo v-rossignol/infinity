@@ -7,6 +7,7 @@ model: Agent Infinity (Mistral Medium 3.5)
 sources:
   - documentation/objects/cube.md
   - documentation/objects/star.md
+  - documentation/objects/star-system.md
   - AGENTS.md
 ```
 

@@ -1,12 +1,3 @@
-export interface Star {
-  id: string;
-  type: string;
-  x: number;
-  y: number;
-  mass: number;
-  temperature: number;
-}
-
 export interface SystemPlanet {
   id: string;
   name: string;
@@ -20,7 +11,6 @@ export interface SystemPlanet {
 export interface StarSystemData {
   id: string;
   name: string;
-  stars: Star[];
   planets: SystemPlanet[];
   visited: boolean;
 }

@@ -176,7 +176,7 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/cubes/by-name/:name` | GET | JWT |
 | `/infinity/stars/:id` | GET | JWT |
 | `/infinity/stars?cube_id={uuid}` | GET | JWT |
-| `/infinity/galaxy/systems/:systemId` | GET | — |
+| `/infinity/galaxy/systems/:systemId` | GET | JWT |
 | `/infinity/planets/:planetId` | GET | — |
 | `/infinity/resources/planet/:planetId` | GET | — |
 

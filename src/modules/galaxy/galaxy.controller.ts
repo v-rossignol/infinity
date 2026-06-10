@@ -1,12 +1,14 @@
-import { Controller, Get, Param } from '@nestjs/common';
-import { GalaxyService } from './galaxy.service';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { StarSystemService } from './star-system.service';
 
 @Controller('galaxy')
+@UseGuards(JwtAuthGuard)
 export class GalaxyController {
-  constructor(private readonly galaxyService: GalaxyService) {}
+  constructor(private readonly starSystemService: StarSystemService) {}
 
   @Get('systems/:systemId')
   async getStarSystem(@Param('systemId') systemId: string) {
-    return this.galaxyService.getStarSystem(systemId);
+    return this.starSystemService.getStarSystem(systemId);
   }
 }

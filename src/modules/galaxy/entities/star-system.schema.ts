@@ -10,16 +10,6 @@ export class StarSystem {
   name: string;
 
   @Prop({ type: [Object], required: true })
-  stars: Array<{
-    id: string;
-    type: string;
-    x: number;
-    y: number;
-    mass: number;
-    temperature: number;
-  }>;
-
-  @Prop({ type: [Object], required: true })
   planets: Array<{
     id: string;
     name: string;

@@ -47,6 +47,7 @@ Le serveur écoute sur [http://localhost:4000](http://localhost:4000).
 |----------|---------|
 | [infinity-api.md](./infinity-api.md) | API REST et WebSocket (préfixe `/infinity`) |
 | [galaxy/README.md](./galaxy/README.md) | Galaxie par cubes — index et specs |
+| [stellar-system/README.md](./stellar-system/README.md) | Stellar system — enter star, shared UUID, legacy vs intended |
 | [server-setup.md](./server-setup.md) | Architecture des modules |
 
 ## Structure

@@ -131,7 +131,7 @@ Cube centered at `(10, 10, 10)`:
 
 - **Storage**: MongoDB — separate `cubes` and `stars` collections.
 - **Caching**: Redis — full `{ cube, stars }` payload, TTL 120 s (`CubeService`).
-- **Legacy `StarSystem`**: Unchanged; no migration required.
+- **Legacy `StarSystem`**: Separate MongoDB document for the inner view (planets only) when entering a star. `_id` = cube star UUID; see [stellar-system-summary.md](../stellar-system/stellar-system-summary.md).
 - **REST endpoints** (JWT, prefix `/infinity`):
   - `GET /infinity/cubes/:x/:y/:z` — find or create cube by center coordinates
   - `GET /infinity/cubes/:x/:y/:z/stars` — stars only

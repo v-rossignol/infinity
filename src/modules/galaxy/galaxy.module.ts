@@ -4,6 +4,7 @@ import { AuthModule } from '../auth/auth.module';
 import { Cube, CubeSchema } from './entities/cube.schema';
 import { Star, StarSchema } from './entities/star.schema';
 import { StarSystem, StarSystemSchema } from './entities/star-system.schema';
+import { StarSystemService } from './star-system.service';
 import { GalaxyService } from './galaxy.service';
 import { GalaxyController } from './galaxy.controller';
 import { CubesController } from './cubes.controller';
@@ -21,7 +22,7 @@ import { StarService } from './star.service';
     ]),
   ],
   controllers: [GalaxyController, CubesController, StarsController],
-  providers: [GalaxyService, CubeService, StarService],
-  exports: [GalaxyService, CubeService, StarService],
+  providers: [GalaxyService, CubeService, StarService, StarSystemService],
+  exports: [GalaxyService, CubeService, StarService, StarSystemService],
 })
 export class GalaxyModule {}

@@ -10,6 +10,8 @@ sources:
   - src/shared/utils/galaxy-generation.ts
   - documentation/galaxy/cube-based-star-system.md
   - documentation/galaxy/cube-naming-specification.md
+  - documentation/objects/star.md
+  - documentation/objects/star-system.md
 ```
 
 ## Overview
@@ -128,8 +130,9 @@ erDiagram
   }
 ```
 
-- A cube **owns** many stars via `stars.cube_id`.
+- A cube **owns** many stars via `stars.cube_id`. A cube contains **lightweight stars only** — the permanent galaxy-map structure. Stars are **kept** when a player enters one; [star systems](./star-system.md) are **not** stored on the cube.
 - `star_ids` on the cube is a denormalized list of star UUIDs. When loading a cube, the server reads stars from the **`stars` collection** by `cube_id`; `star_ids` is not used for hydration.
+- Entering a star loads or creates a [star system](../objects/star-system.md) **on demand** (`GET`, get-or-create). The **star must exist** first; the star system shares the star's UUID and name.
 
 ---
 
@@ -157,5 +160,6 @@ WebSocket: `REQUEST_CUBE` → `CUBE_DATA` (same `{ cube, stars }` shape). See [i
 ## Related documents
 
 - [star.md](./star.md) — star object
+- [star-system.md](./star-system.md) — star system object (inner view, on demand)
 - [cube-based-star-system.md](../galaxy/cube-based-star-system.md) — coordinate system and galaxy layout
 - [cube-naming-specification.md](../galaxy/cube-naming-specification.md) — `name` algorithm

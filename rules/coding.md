@@ -27,6 +27,7 @@ This document defines coding rules for the **Infinity Server** codebase. The rep
 
 - Use **Prettier** for formatting.
 - Use **ESLint** with the repository configuration in `.eslintrc.js`.
+- Follow **EditorConfig** defaults in `.editorconfig` (LF line endings, UTF-8, 2-space indentation). Editors that support EditorConfig apply these settings on new and saved files.
 - Do not introduce style rules from external guides unless they are added to the local ESLint configuration.
 - Run `npm run lint` and `npm run format` before committing when practical.
 

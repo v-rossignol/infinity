@@ -11,10 +11,10 @@ export class PlanetsService {
     private planetModel: Model<Planet>,
   ) {}
 
-  async getPlanet(planetId: string) {
+  async getPlanet(planetId: string, starSystemId?: string) {
     let planet = await this.planetModel.findById(planetId).exec();
     if (!planet) {
-      planet = await this.generatePlanet(planetId);
+      planet = await this.generatePlanet(planetId, starSystemId ?? 'unknown');
     }
     return planet;
   }
@@ -27,7 +27,6 @@ export class PlanetsService {
       seed: planetId,
       ...planetData,
       visited: true,
-      createdAt: new Date(),
     });
     return planet.save();
   }

@@ -3,18 +3,9 @@ import request from 'supertest';
 import { Socket } from 'socket.io-client';
 import { GALAXY_EVENTS } from '../../src/modules/socket/events/galaxy.events';
 import { registerAndGetToken } from './helpers/auth.helper';
-import {
-  apiPath,
-  createE2eApp,
-  getAppPort,
-  shouldRunE2e,
-} from './helpers/create-e2e-app';
+import { apiPath, createE2eApp, getAppPort, shouldRunE2e } from './helpers/create-e2e-app';
 import { globalPositionInCube, nextGridOrigin } from './helpers/grid-origin.helper';
-import {
-  connectSocket,
-  emitAndWaitFor,
-  waitForSocketEvent,
-} from './helpers/socket.helper';
+import { connectSocket, emitAndWaitFor, waitForSocketEvent } from './helpers/socket.helper';
 
 const describeE2e = shouldRunE2e() ? describe : describe.skip;
 
@@ -164,12 +155,10 @@ describeE2e('Galaxy (e2e)', () => {
       const origin = nextGridOrigin();
       const global = globalPositionInCube(origin);
 
-      const payload = await emitAndWaitFor<typeof global, { cube: { id: string; origin: typeof origin } }>(
-        socket,
-        GALAXY_EVENTS.REQUEST_CUBE,
-        global,
-        GALAXY_EVENTS.CUBE_DATA,
-      );
+      const payload = await emitAndWaitFor<
+        typeof global,
+        { cube: { id: string; origin: typeof origin } }
+      >(socket, GALAXY_EVENTS.REQUEST_CUBE, global, GALAXY_EVENTS.CUBE_DATA);
 
       expect(payload.cube.origin).toEqual(origin);
       expect(payload.cube.id).toBeTruthy();
@@ -181,12 +170,7 @@ describeE2e('Galaxy (e2e)', () => {
       const cubePayload = await emitAndWaitFor<
         ReturnType<typeof globalPositionInCube>,
         { stars: Array<{ id: string }> }
-      >(
-        socket,
-        GALAXY_EVENTS.REQUEST_CUBE,
-        globalPositionInCube(origin),
-        GALAXY_EVENTS.CUBE_DATA,
-      );
+      >(socket, GALAXY_EVENTS.REQUEST_CUBE, globalPositionInCube(origin), GALAXY_EVENTS.CUBE_DATA);
 
       const star = await emitAndWaitFor<{ starId: string }, { id: string }>(
         socket,

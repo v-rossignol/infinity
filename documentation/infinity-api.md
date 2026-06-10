@@ -15,7 +15,7 @@ sources:
   - src/main.ts
   - documentation/objects/cube.md
   - documentation/objects/star.md
-  - src/config/app.config.ts
+  - documentation/objects/star-system.md
   - src/config/socket.config.ts
   - documentation/specifications/galaxy-phase-4-api-design.md
 ```
@@ -68,8 +68,8 @@ CORS is enabled with `origin: '*'` and `credentials: true` (development only —
 | Token delivery | JSON field `access_token` on `POST /infinity/auth/login` and `POST /infinity/auth/register` |
 | Token lifetime | `1h` (`JwtModule` `signOptions.expiresIn` in `auth.module.ts`) |
 | Header | `Authorization: Bearer <access_token>` |
-| Protected routes | **Cube and star endpoints** (`/infinity/cubes/*`, `/infinity/stars/*`) require a valid JWT |
-| Public routes | Health, auth, players, legacy galaxy star systems, planets, resources |
+| Protected routes | **Cube, star, and star-system endpoints** (`/infinity/cubes/*`, `/infinity/stars/*`, `/infinity/galaxy/systems/*`) require a valid JWT |
+| Public routes | Health, auth, players, planets, resources |
 
 ---
 
@@ -84,7 +84,7 @@ CORS is enabled with `origin: '*'` and `credentials: true` (development only —
 | `POST` | `/infinity/auth/login` | Public | Authenticate and return JWT |
 | `GET` | `/infinity/players/:userId` | Public | Get or create player profile for a user |
 | `PATCH` | `/infinity/players/:playerId/position` | Public | Update player position |
-| `GET` | `/infinity/galaxy/systems/:systemId` | Public | Get or generate a legacy star system |
+| `GET` | `/infinity/galaxy/systems/:systemId` | JWT | Get or generate a star system (`systemId` = star UUID) |
 | `GET` | `/infinity/cubes/by-name/:name` | JWT | Get cube and stars by hash-based name |
 | `GET` | `/infinity/cubes/:x/:y/:z` | JWT | Get or generate cube and stars by center coordinates |
 | `GET` | `/infinity/cubes/:x/:y/:z/stars` | JWT | Get or generate cube; return stars only |
@@ -304,9 +304,9 @@ Returns the updated `Player` object (same shape as `GET /infinity/players/:userI
 The galaxy module exposes two models:
 
 - **Cube-based galaxy** (new) — cubes and stars in MongoDB (`cubes`, `stars` collections), cached in **Redis** (TTL 2 minutes). Protected by JWT.
-- **Legacy star systems** — procedural 2D star systems in MongoDB; public, unchanged.
+- **Star systems** — inner view (planets) when entering a cube star; `StarSystem._id` = `Star.id`. See [stellar-system/stellar-system-summary.md](./stellar-system/stellar-system-summary.md).
 
-See also: [objects/cube.md](./objects/cube.md), [objects/star.md](./objects/star.md), `documentation/galaxy/cube-based-star-system.md`, `documentation/specifications/galaxy-phase-4-api-design.md`.
+See also: [objects/cube.md](./objects/cube.md), [objects/star.md](./objects/star.md), [objects/star-system.md](./objects/star-system.md), `documentation/galaxy/cube-based-star-system.md`, `documentation/specifications/galaxy-phase-4-api-design.md`.
 
 ---
 
@@ -528,9 +528,11 @@ Returns an empty array (`{ "stars": [] }`) when the cube has no stars or the UUI
 
 ---
 
-#### Legacy star systems (public)
+#### Star systems (JWT)
 
-Star systems are stored in **MongoDB** (Mongoose). Systems are **generated on first access** if the `systemId` does not exist (deterministic from seed).
+A star system is built when a player **enters** a cube star. **`StarSystem._id` = `Star.id`** (UUID) and **`StarSystem.name` = `Star.name`**. The star remains in the `stars` collection; the system holds **planets only** and local layout. Load the parent star via `GET /infinity/stars/:id`. See [objects/star-system.md](./objects/star-system.md) and [stellar-system-summary.md](./stellar-system/stellar-system-summary.md).
+
+Star systems are stored in **MongoDB** (Mongoose). Systems are **generated on first access** if the id does not exist. First-time generation is **non-deterministic** (`Math.random()`), seeded by the star UUID; star properties do not alter layout. Once persisted, the same id returns the saved document.
 
 ##### `GET /infinity/galaxy/systems/:systemId`
 
@@ -538,33 +540,24 @@ Star systems are stored in **MongoDB** (Mongoose). Systems are **generated on fi
 
 | Name | Type | Description |
 |------|------|-------------|
-| `systemId` | string | Unique system identifier (used as MongoDB `_id` and generation seed) |
+| `systemId` | string | Parent star UUID (`Star.id`). **404** if no matching star exists. |
 
 **Example request**
 
 ```http
-GET /infinity/galaxy/systems/alpha-centauri
+GET /infinity/galaxy/systems/661e8400-e29b-41d4-a716-446655440001
+Authorization: Bearer <jwt>
 ```
 
 **Success response — 200 OK**
 
 ```json
 {
-  "_id": "alpha-centauri",
-  "name": "Star System alpha-cen",
-  "stars": [
-    {
-      "id": "alpha-centauri_star_0",
-      "type": "yellow",
-      "x": 50.12,
-      "y": 3.45,
-      "mass": 1.23,
-      "temperature": 5800.5
-    }
-  ],
+  "_id": "661e8400-e29b-41d4-a716-446655440001",
+  "name": "Alpha kikyhk",
   "planets": [
     {
-      "id": "alpha-centauri_planet_0",
+      "id": "661e8400-e29b-41d4-a716-446655440001_planet_0",
       "name": "Planet 1",
       "x": 142.8,
       "y": 67.3,
@@ -583,10 +576,18 @@ GET /infinity/galaxy/systems/alpha-centauri
 }
 ```
 
-**Star types:** `yellow`, `red`, `blue`, `white`  
 **Planet types:** `rocky`, `gas`, `ice`, `lava`
 
-Planet count and layout are procedurally derived from `systemId`. The same `systemId` always yields the same system once persisted.
+Planet count and layout are procedurally generated on first access. The same id returns the persisted system after the first save.
+
+> **Star linkage:** When loading a planet from a star system, pass `?systemId={starUuid}` where `starUuid` is the parent star UUID (same as `StarSystem._id`). Planet ids in embedded summaries use `{starUuid}_planet_{index}`.
+
+**Error responses**
+
+| Status | Condition |
+|--------|-----------|
+| `401 Unauthorized` | Missing or invalid JWT |
+| `404 Not Found` | Star not found (no system generated) |
 
 ---
 
@@ -602,10 +603,16 @@ Planet surface data is stored in **MongoDB**. Planets are **generated on first a
 |------|------|-------------|
 | `planetId` | string | Unique planet identifier (MongoDB `_id` and generation seed) |
 
+**Query parameters**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `systemId` | string | no | Parent star UUID / stellar system id; stored as `starSystemId` when the planet document is first generated |
+
 **Example request**
 
 ```http
-GET /infinity/planets/alpha-centauri_planet_0
+GET /infinity/planets/alpha-centauri_planet_0?systemId=alpha-centauri
 ```
 
 **Success response — 200 OK**
@@ -614,7 +621,7 @@ GET /infinity/planets/alpha-centauri_planet_0
 {
   "_id": "alpha-centauri_planet_0",
   "name": "Planet alpha-cen",
-  "starSystemId": "unknown",
+  "starSystemId": "alpha-centauri",
   "seed": "alpha-centauri_planet_0",
   "biomeTypes": ["grass", "ocean", "mountain", "desert"],
   "resources": {
@@ -638,7 +645,7 @@ GET /infinity/planets/alpha-centauri_planet_0
 | `biomeTypes` | Derived biome labels: `grass`, `desert`, `forest`, `ocean`, `mountain`, `tundra` |
 | `resources` | Aggregate resource quantities for the planet surface |
 
-> **Note:** When a planet is generated via this endpoint alone, `starSystemId` defaults to `"unknown"`. Planets referenced inside a star system's `planets[]` array use IDs like `{systemId}_planet_{index}`.
+> **Note:** When `systemId` is omitted on first generation, `starSystemId` defaults to `"unknown"`. Clients should pass `?systemId={starUuid}` (the cube star UUID) when opening a planet from a star system. Planet ids in embedded summaries use `{starUuid}_planet_{index}`.
 
 ---
 
@@ -659,7 +666,7 @@ List all resource nodes on a planet.
 **Example request**
 
 ```http
-GET /resources/planet/alpha-centauri_planet_0
+GET /infinity/resources/planet/661e8400-e29b-41d4-a716-446655440001_planet_0
 ```
 
 **Success response — 200 OK**
@@ -926,7 +933,7 @@ sequenceDiagram
   REST->>DB: Find or generate Cube + Stars
   REST-->>Client: { cube, stars }
 
-  Client->>REST: GET /infinity/galaxy/systems/{systemId}
+  Client->>REST: GET /infinity/galaxy/systems/{systemId} (Bearer token)
   REST->>DB: Find or generate StarSystem
   REST-->>Client: Star system + planet list
 
@@ -950,6 +957,8 @@ sequenceDiagram
 |----------|-------|
 | `documentation/objects/cube.md` | Cube object — fields, storage, relationships |
 | `documentation/objects/star.md` | Star object — fields, naming, storage |
+| `documentation/objects/star-system.md` | Star system object — enter-star, planets, generation |
+| `documentation/stellar-system/README.md` | Stellar system feature — implementation status |
 | `documentation/stellar-gate-api.md` | Target auth contract for the StellarGate client (cookie-based JWT, `/infinity` prefix) |
 | `documentation/galaxy/README.md` | Galaxy documentation index (design, naming, phase specs) |
 | `documentation/specifications/galaxy-phase-4-api-design.md` | Phase 4 cube/star REST implementation spec |

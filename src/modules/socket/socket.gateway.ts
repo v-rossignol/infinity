@@ -105,15 +105,13 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private handleGalaxyHandlerError(client: Socket, event: string, error: unknown): void {
     if (error instanceof BadRequestException) {
-      const message =
-        typeof error.message === 'string' ? error.message : 'Bad Request';
+      const message = typeof error.message === 'string' ? error.message : 'Bad Request';
       this.emitGalaxyError(client, event, message, 400);
       return;
     }
 
     if (error instanceof NotFoundException) {
-      const message =
-        typeof error.message === 'string' ? error.message : 'Not Found';
+      const message = typeof error.message === 'string' ? error.message : 'Not Found';
       this.emitGalaxyError(client, event, message, 404);
       return;
     }

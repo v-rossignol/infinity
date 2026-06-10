@@ -10,6 +10,7 @@ sources:
   - src/shared/utils/galaxy-generation.ts
   - src/shared/constants/galaxy.constants.ts
   - documentation/galaxy/cube-based-star-system.md
+  - documentation/objects/star-system.md
 ```
 
 ## Overview
@@ -116,6 +117,7 @@ Collection: **`stars`**
 - Each star belongs to exactly one **cube** (`cube_id` → `cube.id`).
 - The parent cube's `star_ids` array lists this star's `id` (denormalized).
 - The **`stars` collection** is the source of truth for star documents; cube hydration queries by `cube_id`.
+- Each star may have at most one **star system** ([star-system.md](./star-system.md)): loaded **on demand** when a player enters the star (`GET`, get-or-create). The **star stays in the cube**; the system is a separate document with **`_id` and `name` equal to this star's**.
 
 ---
 
@@ -141,6 +143,7 @@ Once persisted, the same cube `origin` always returns the same stars.
 | `GET` | `/infinity/stars?cube_id={uuid}` | List stars in a cube (JWT); empty array if unknown |
 | `GET` | `/infinity/cubes/:x/:y/:z` | Returns cube + all its stars (JWT) |
 | `GET` | `/infinity/cubes/:x/:y/:z/stars` | Returns `{ stars }` only (JWT) |
+| `GET` | `/infinity/galaxy/systems/:systemId` | Enter star: get or generate [star system](./star-system.md) where `_id` = star UUID (JWT) |
 
 WebSocket:
 
@@ -156,4 +159,7 @@ See [infinity-api.md](../infinity-api.md) for full request/response details.
 ## Related documents
 
 - [cube.md](./cube.md) — parent cube object
+- [star-system.md](./star-system.md) — inner system object (planets, on demand)
+- [Stellar System index](../stellar-system/README.md) — implementation status and audit
+- [Stellar System Summary](../stellar-system/stellar-system-summary.md) — domain reference
 - [cube-based-star-system.md](../galaxy/cube-based-star-system.md) — coordinate system and galaxy layout

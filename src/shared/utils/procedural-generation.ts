@@ -1,15 +1,7 @@
 import { Noise } from 'noisejs';
 
-interface StarSystemData {
+interface StarSystemGenerationData {
   name: string;
-  stars: Array<{
-    id: string;
-    type: string;
-    x: number;
-    y: number;
-    mass: number;
-    temperature: number;
-  }>;
   planets: Array<{
     id: string;
     name: string;
@@ -31,37 +23,22 @@ const createNoise = (seed: string): Noise => {
   return noise;
 };
 
-export const generateStarSystem = (options: GenerateStarSystemOptions): StarSystemData => {
+export const generateStarSystem = (
+  options: GenerateStarSystemOptions,
+): StarSystemGenerationData => {
   const { seed } = options;
   const noise = createNoise(seed);
-
-  const starCount = Math.floor(noise.perlin2(0, 0) * 2) + 1;
-  const stars = [];
-  for (let i = 0; i < starCount; i++) {
-    const angle = (i / starCount) * Math.PI * 2;
-    const distance = 50 + noise.perlin2(i, 0) * 20;
-    stars.push({
-      id: `${seed}_star_${i}`,
-      type: ['yellow', 'red', 'blue', 'white'][Math.floor(Math.random() * 4)],
-      x: Math.cos(angle) * distance,
-      y: Math.sin(angle) * distance,
-      mass: 0.5 + Math.random() * 2,
-      temperature: 3000 + Math.random() * 7000,
-    });
-  }
 
   const planetCount = Math.floor(noise.perlin2(1, 0) * 5) + 3;
   const planets = [];
   for (let i = 0; i < planetCount; i++) {
-    const starIndex = Math.floor(Math.random() * stars.length);
-    const star = stars[starIndex];
     const angle = Math.random() * Math.PI * 2;
     const distance = 100 + noise.perlin2(i, 1) * 50;
     planets.push({
       id: `${seed}_planet_${i}`,
       name: `Planet ${i + 1}`,
-      x: star.x + Math.cos(angle) * distance,
-      y: star.y + Math.sin(angle) * distance,
+      x: Math.cos(angle) * distance,
+      y: Math.sin(angle) * distance,
       radius: 5 + Math.random() * 10,
       type: ['rocky', 'gas', 'ice', 'lava'][Math.floor(Math.random() * 4)],
       resources: {
@@ -74,7 +51,6 @@ export const generateStarSystem = (options: GenerateStarSystemOptions): StarSyst
 
   return {
     name: `Star System ${seed.substring(0, 8)}`,
-    stars,
     planets,
   };
 };

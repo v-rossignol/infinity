@@ -1,10 +1,10 @@
 import { generatePlanet, generateStarSystem } from './procedural-generation';
 
 describe('procedural-generation', () => {
-  it('generates a star system with stars and planets', () => {
+  it('generates a star system with planets only (no stars)', () => {
     const system = generateStarSystem({ seed: 'test-system-1' });
     expect(system.name).toContain('Star System');
-    expect(system.stars.length).toBeGreaterThanOrEqual(1);
+    expect(system).not.toHaveProperty('stars');
     expect(system.planets.length).toBeGreaterThanOrEqual(3);
   });
 
