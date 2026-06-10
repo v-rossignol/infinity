@@ -7,7 +7,7 @@ model: Composer
 version: 1.0.0
 sources:
   - documentation/galaxy/development-plan.md (Phase 7)
-  - documentation/api.md
+  - documentation/infinity-api.md
   - documentation/galaxy/
 ```
 
@@ -22,7 +22,7 @@ Phase 7 consolidates galaxy documentation, aligns the API reference with the imp
 | Item | Location | Status |
 |------|----------|--------|
 | Galaxy doc index | `documentation/galaxy/README.md` | Done |
-| API reference (prefix + cube/star routes) | `documentation/api.md` | Done |
+| API reference (prefix + cube/star routes) | `documentation/infinity-api.md` | Done |
 | Cube naming (verified examples) | `documentation/galaxy/cube-naming-specification.md` | Done |
 | Data model & generation | `documentation/galaxy/cube-based-star-system.md` | Updated |
 | Development plan | `documentation/galaxy/development-plan.md` | Phase 7 marked complete |
@@ -43,7 +43,7 @@ All REST routes use the global prefix **`/infinity`** (`src/main.ts`).
 | `GET` | `/infinity/stars/:id` | JWT |
 | `GET` | `/infinity/stars?cube_id={uuid}` | JWT |
 
-Socket.IO remains on the server root (no `/infinity` prefix). See `documentation/api.md` for event names and payloads.
+Socket.IO remains on the server root (no `/infinity` prefix). See `documentation/infinity-api.md` for event names and payloads.
 
 ---
 

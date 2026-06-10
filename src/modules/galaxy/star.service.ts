@@ -27,6 +27,7 @@ export class StarService {
       try {
         await this.starModel.create({
           _id: star.id,
+          name: star.name,
           local_coords: star.local_coords,
           cube_id: star.cube_id,
           properties: star.properties,

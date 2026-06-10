@@ -264,7 +264,7 @@ Deferred to a later phase.
 
 ## Phase 7: Documentation
 
-- **API documentation**: [documentation/api.md](../api.md) — all routes under `/infinity`, cube/star REST + Socket.IO.
+- **API documentation**: [documentation/infinity-api.md](../infinity-api.md) — all routes under `/infinity`, cube/star REST + Socket.IO.
 - **Galaxy index**: [documentation/galaxy/README.md](./README.md).
 - **Data model & generation**: [cube-based-star-system.md](./cube-based-star-system.md).
 - **Cube naming**: [cube-naming-specification.md](./cube-naming-specification.md) — verified CRC32 table aligned with `src/shared/utils/cube-naming.ts`.

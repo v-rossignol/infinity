@@ -113,9 +113,9 @@ export const generateCube = (options: GenerateCubeOptions) => {
 
   const stars = positions.map((local_coords, index) => {
     const letter = GREEK_LETTERS[index];
-    const id = `${letter} ${name}`;
     return {
-      id,
+      id: uuid(),
+      name: `${letter} ${name}`,
       local_coords,
       cube_id: cubeId,
       properties: { type: pickWeightedStarType(random) },

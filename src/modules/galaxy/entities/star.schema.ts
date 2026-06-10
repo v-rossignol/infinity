@@ -15,6 +15,9 @@ export class Star {
   @Prop({ required: true, unique: true })
   _id: string;
 
+  @Prop({ required: true, unique: true })
+  name: string;
+
   @Prop({ type: Vec3Schema, required: true })
   local_coords: Vec3;
 

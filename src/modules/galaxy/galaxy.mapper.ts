@@ -10,6 +10,7 @@ type CubeRecord = {
 
 type StarRecord = {
   _id: string;
+  name: string;
   local_coords: StarData['local_coords'];
   cube_id: string;
   properties: StarData['properties'];
@@ -24,6 +25,7 @@ export const toCubeData = (doc: CubeRecord): CubeData => ({
 
 export const toStarData = (doc: StarRecord): StarData => ({
   id: doc._id,
+  name: doc.name,
   local_coords: doc.local_coords,
   cube_id: doc.cube_id,
   properties: doc.properties,

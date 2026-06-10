@@ -34,7 +34,7 @@ It exposes a REST API and real-time Socket.IO events for clients to navigate a p
 |-------|------|------------|---------|
 | PostgreSQL 16 | 5432 | TypeORM (`synchronize: true` in dev) | Structured user/player data |
 | MongoDB 7 | 27017 | Mongoose | Galaxy, planets, resources |
-| Redis 7 | 6379 | `ioredis` (configured, not yet implemented) | Intended for sessions / real-time positions |
+| Redis 7 | 6379 | `ioredis` | Cube cache implemented; sessions / real-time positions planned |
 
 ### Shared utilities (`src/shared/`)
 
@@ -108,15 +108,17 @@ E2E tests are optional locally but should be verified before merging features th
 
 ## Document Conventions
 
-- documents will be written in "documentation/" directory
-- documents will be written as MD file
-- metadata will be added in a YAML block after the title
-- date, author, model name and version will be added as metadata
-- sources will be added as metadata
+See [rules/documents.md](rules/documents.md) for detailed documentation standards and object-document conventions.
+
+- Write project documentation in the `documentation/` directory as Markdown files
+- Add metadata in a YAML block after the title
+- Include date, author, model name, model version, and sources when applicable
 
 --- 
 
 ## Coding Conventions
+
+See [rules/coding.md](rules/coding.md) for detailed coding standards and best practices.
 
 ### NestJS patterns
 
@@ -136,7 +138,7 @@ E2E tests are optional locally but should be verified before merging features th
 - **PostgreSQL** (TypeORM): entities in `src/modules/<name>/<name>.entity.ts`
 - **MongoDB** (Mongoose): schemas in `src/modules/<name>/schemas/<name>.schema.ts`
 - `synchronize: true` is active in dev — schema is auto-applied; do **not** enable in production
-- **Redis** is provisioned but not yet wired into services; implement caching/session modules there when needed
+- **Redis** is wired for cube caching through `RedisModule` / `RedisService`; session and real-time position caching are not yet implemented
 
 ### Auth & security
 
@@ -178,14 +180,21 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/planets/:planetId` | GET | — |
 | `/infinity/resources/planet/:planetId` | GET | — |
 
-See `documentation/api.md` for request/response shapes and Socket.IO events.
+See `documentation/infinity-api.md` for request/response shapes and Socket.IO events.
 
 ---
 
 ## Important Constraints
 
+- Never create a git commit unless the user explicitly asks for it
 - Do **not** commit `.env` — only `.env.example`
 - Do **not** enable `synchronize: true` in production TypeORM config
 - Do **not** expose `JWT_SECRET` in logs or responses
 - Redis integration is **partial** — cube cache is wired; session/position caching is not yet implemented
 - The `docker/docker-compose.yml` starts databases only, **not** the NestJS app
+
+---
+
+## Response Style
+
+- When answering a user question, start the response with `[🤖]`.

@@ -32,7 +32,8 @@ describe('StarService', () => {
     mockStarModel.find.mockReturnValue({
       exec: jest.fn().mockResolvedValue([
         {
-          _id: 'Alpha kikyhk',
+          _id: 'star-uuid',
+          name: 'Alpha kikyhk',
           local_coords: { x: 1, y: 2, z: 3 },
           cube_id: 'cube-uuid',
           properties: { type: 'yellow' },
@@ -43,7 +44,8 @@ describe('StarService', () => {
     const stars = await service.findByCubeId('cube-uuid');
     expect(stars).toEqual([
       {
-        id: 'Alpha kikyhk',
+        id: 'star-uuid',
+        name: 'Alpha kikyhk',
         local_coords: { x: 1, y: 2, z: 3 },
         cube_id: 'cube-uuid',
         properties: { type: 'yellow' },
@@ -67,13 +69,15 @@ describe('StarService', () => {
     await expect(
       service.saveManyBestEffort([
         {
-          id: 'Alpha kikyhk',
+          id: 'star-uuid-1',
+          name: 'Alpha kikyhk',
           local_coords: { x: 1, y: 2, z: 3 },
           cube_id: 'cube-uuid',
           properties: { type: 'yellow' },
         },
         {
-          id: 'Beta kikyhk',
+          id: 'star-uuid-2',
+          name: 'Beta kikyhk',
           local_coords: { x: 4, y: 5, z: 6 },
           cube_id: 'cube-uuid',
           properties: { type: 'red' },

@@ -45,7 +45,7 @@ Le serveur écoute sur [http://localhost:4000](http://localhost:4000).
 
 | Document | Contenu |
 |----------|---------|
-| [api.md](./api.md) | API REST et WebSocket (préfixe `/infinity`) |
+| [infinity-api.md](./infinity-api.md) | API REST et WebSocket (préfixe `/infinity`) |
 | [galaxy/README.md](./galaxy/README.md) | Galaxie par cubes — index et specs |
 | [server-setup.md](./server-setup.md) | Architecture des modules |
 

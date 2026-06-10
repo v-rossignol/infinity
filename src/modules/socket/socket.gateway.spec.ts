@@ -16,11 +16,12 @@ describe('SocketGateway galaxy events', () => {
       id: '550e8400-e29b-41d4-a716-446655440000',
       name: 'kikyhk',
       origin: { x: 10, y: 10, z: 10 },
-      star_ids: ['Alpha kikyhk'],
+      star_ids: ['661e8400-e29b-41d4-a716-446655440001'],
     },
     stars: [
       {
-        id: 'Alpha kikyhk',
+        id: '661e8400-e29b-41d4-a716-446655440001',
+        name: 'Alpha kikyhk',
         local_coords: { x: 1.0, y: 2.0, z: 3.0 },
         cube_id: '550e8400-e29b-41d4-a716-446655440000',
         properties: { type: 'yellow' as const },
@@ -101,9 +102,9 @@ describe('SocketGateway galaxy events', () => {
   it('REQUEST_STAR emits STAR_DATA when star exists', async () => {
     mockStarService.findById.mockResolvedValue(star);
 
-    await gateway.handleRequestStar(mockClient, { starId: 'Alpha kikyhk' });
+    await gateway.handleRequestStar(mockClient, { starId: star.id });
 
-    expect(mockStarService.findById).toHaveBeenCalledWith('Alpha kikyhk');
+    expect(mockStarService.findById).toHaveBeenCalledWith(star.id);
     expect(mockClient.emit).toHaveBeenCalledWith(GALAXY_EVENTS.STAR_DATA, star);
   });
 

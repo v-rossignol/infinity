@@ -71,8 +71,17 @@ describe('galaxy-generation', () => {
     const randomValues = [0.3, 0.6, 0.1, 0.8, 0.2, 0.4, 0.9, 0.15, 0.55, 0.75];
     const random = () => randomValues[randomCall++ % randomValues.length];
 
+    let uuidCall = 0;
+    const nextUuid = () => {
+      uuidCall += 1;
+      return uuidCall === 1
+        ? '550e8400-e29b-41d4-a716-446655440000'
+        : `660e8400-e29b-41d4-a716-4466554400${String(uuidCall - 1).padStart(2, '0')}`;
+    };
+
     beforeEach(() => {
       randomCall = 0;
+      uuidCall = 0;
     });
 
     it('rejects non-grid-aligned origins', () => {
@@ -83,7 +92,7 @@ describe('galaxy-generation', () => {
       const result = generateCube({
         origin,
         random,
-        uuid: () => '550e8400-e29b-41d4-a716-446655440000',
+        uuid: nextUuid,
       });
 
       expect(result.cube.id).toBe('550e8400-e29b-41d4-a716-446655440000');
@@ -94,14 +103,17 @@ describe('galaxy-generation', () => {
       expect(result.stars.length).toBeLessThanOrEqual(GALAXY_CONSTANTS.MAX_STARS_PER_CUBE);
     });
 
-    it('assigns greek-letter ids and cube references on stars', () => {
+    it('assigns uuid ids, greek-letter names, and cube references on stars', () => {
       const result = generateCube({
         origin,
         random,
-        uuid: () => '550e8400-e29b-41d4-a716-446655440000',
+        uuid: nextUuid,
       });
 
-      expect(result.stars[0].id).toBe(`Alpha ${result.cube.name}`);
+      expect(result.stars[0].id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+      expect(result.stars[0].name).toBe(`Alpha ${result.cube.name}`);
       expect(result.stars[0].cube_id).toBe(result.cube.id);
       expect(result.cube.star_ids).toEqual(result.stars.map((star) => star.id));
       expect(STAR_TYPE_WEIGHTS.map((entry) => entry.type)).toContain(

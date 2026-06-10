@@ -21,6 +21,7 @@ export interface CubeData {
 
 export interface StarData {
   id: string;
+  name: string;
   local_coords: Vec3;
   cube_id: string;
   properties: StarProperties;

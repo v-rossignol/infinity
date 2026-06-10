@@ -138,7 +138,7 @@ Cube centered at `(10, 10, 10)`:
   - `GET /infinity/cubes/by-name/:name` — lookup by hash name (no generation)
   - `GET /infinity/stars/:id` — star by id
   - `GET /infinity/stars?cube_id={uuid}` — list stars in a cube
-- **WebSocket**: `REQUEST_CUBE`, `CUBE_DATA`, `STAR_DATA` (public; see `documentation/api.md`).
+- **WebSocket**: `REQUEST_CUBE`, `CUBE_DATA`, `STAR_DATA` (public; see `documentation/infinity-api.md`).
 
 ---
 

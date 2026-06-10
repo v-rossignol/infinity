@@ -44,7 +44,7 @@ Implementation specs locked during development:
 
 REST and WebSocket contracts for cube/star endpoints (including the `/infinity` global prefix):
 
-- [documentation/api.md](../api.md) — full server API reference
+- [documentation/infinity-api.md](../infinity-api.md) — full server API reference
 
 ---
 

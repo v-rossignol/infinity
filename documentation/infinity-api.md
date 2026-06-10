@@ -1,7 +1,7 @@
 # Infinity Server — REST & WebSocket API
 
 ```yaml
-date: 2026-06-08
+date: 2026-06-09
 author: Roro LeSage
 model: Composer
 type: API Reference
@@ -13,6 +13,8 @@ sources:
   - src/modules/resources/
   - src/modules/socket/
   - src/main.ts
+  - documentation/objects/cube.md
+  - documentation/objects/star.md
   - src/config/app.config.ts
   - src/config/socket.config.ts
   - documentation/specifications/galaxy-phase-4-api-design.md
@@ -64,7 +66,7 @@ CORS is enabled with `origin: '*'` and `credentials: true` (development only —
 |--------|-------|
 | Mechanism | JWT signed with `JWT_SECRET` |
 | Token delivery | JSON field `access_token` on `POST /infinity/auth/login` and `POST /infinity/auth/register` |
-| Token lifetime | `1h` (`appConfig.jwt.expiresIn`) |
+| Token lifetime | `1h` (`JwtModule` `signOptions.expiresIn` in `auth.module.ts`) |
 | Header | `Authorization: Bearer <access_token>` |
 | Protected routes | **Cube and star endpoints** (`/infinity/cubes/*`, `/infinity/stars/*`) require a valid JWT |
 | Public routes | Health, auth, players, legacy galaxy star systems, planets, resources |
@@ -104,7 +106,7 @@ Lightweight health check. Does not verify database connectivity.
 ```json
 {
   "name": "infinity-server",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "status": "OK"
 }
 ```
@@ -304,13 +306,13 @@ The galaxy module exposes two models:
 - **Cube-based galaxy** (new) — cubes and stars in MongoDB (`cubes`, `stars` collections), cached in **Redis** (TTL 2 minutes). Protected by JWT.
 - **Legacy star systems** — procedural 2D star systems in MongoDB; public, unchanged.
 
-See also: `documentation/galaxy/cube-based-star-system.md`, `documentation/specifications/galaxy-phase-4-api-design.md`.
+See also: [objects/cube.md](./objects/cube.md), [objects/star.md](./objects/star.md), `documentation/galaxy/cube-based-star-system.md`, `documentation/specifications/galaxy-phase-4-api-design.md`.
 
 ---
 
 #### Cubes (JWT required)
 
-Cube centers lie on a 10 LY grid (e.g. `(0, 0, 0)`, `(10, 10, 10)`, `(-10, 0, 20)`). Coordinates in the URL are the cube **center**, not the minimum corner.
+Each cube is a **10 LY cube** (edge length **10 LY** on every axis). Cube **centers** lie on a 10 LY grid (e.g. `(0, 0, 0)`, `(10, 10, 10)`, `(-10, 0, 20)`), so adjacent cubes meet face-to-face with no gap. Coordinates in the URL are the cube **center**, not the minimum corner.
 
 ##### `GET /infinity/cubes/:x/:y/:z`
 
@@ -339,14 +341,25 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     "id": "550e8400-e29b-41d4-a716-446655440000",
     "name": "kikyhk",
     "origin": { "x": 10, "y": 10, "z": 10 },
-    "star_ids": ["Alpha kikyhk", "Beta kikyhk"]
+    "star_ids": [
+      "661e8400-e29b-41d4-a716-446655440001",
+      "662e8400-e29b-41d4-a716-446655440002"
+    ]
   },
   "stars": [
     {
-      "id": "Alpha kikyhk",
+      "id": "661e8400-e29b-41d4-a716-446655440001",
+      "name": "Alpha kikyhk",
       "local_coords": { "x": 1.0, "y": 2.0, "z": 3.0 },
       "cube_id": "550e8400-e29b-41d4-a716-446655440000",
       "properties": { "type": "yellow" }
+    },
+    {
+      "id": "662e8400-e29b-41d4-a716-446655440002",
+      "name": "Beta kikyhk",
+      "local_coords": { "x": 7.8, "y": 1.2, "z": 4.5 },
+      "cube_id": "550e8400-e29b-41d4-a716-446655440000",
+      "properties": { "type": "red" }
     }
   ]
 }
@@ -357,8 +370,9 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 | `cube.id` | UUID string | Cube primary key |
 | `cube.name` | string | Hash-based label (CRC32 + Base36 of origin) |
 | `cube.origin` | object | Cube center `{ x, y, z }` in light-years |
-| `cube.star_ids` | string[] | Star identifiers (Greek letter + cube name) |
-| `stars[].id` | string | e.g. `"Alpha kikyhk"` |
+| `cube.star_ids` | string[] | Star UUIDs in this cube (denormalized; see [star.md](./objects/star.md)) |
+| `stars[].id` | UUID string | Star primary key |
+| `stars[].name` | string | Display label (Greek letter + cube `name`, e.g. `"Alpha kikyhk"`) |
 | `stars[].local_coords` | object | Position within cube, relative to minimum corner |
 | `stars[].cube_id` | UUID string | Parent cube `id` |
 | `stars[].properties.type` | string | `yellow`, `red`, `blue`, or `white` |
@@ -384,7 +398,8 @@ Same find-or-create behavior as `GET /infinity/cubes/:x/:y/:z`, but returns only
 {
   "stars": [
     {
-      "id": "Alpha kikyhk",
+      "id": "661e8400-e29b-41d4-a716-446655440001",
+      "name": "Alpha kikyhk",
       "local_coords": { "x": 1.0, "y": 2.0, "z": 3.0 },
       "cube_id": "550e8400-e29b-41d4-a716-446655440000",
       "properties": { "type": "yellow" }
@@ -392,6 +407,8 @@ Same find-or-create behavior as `GET /infinity/cubes/:x/:y/:z`, but returns only
   ]
 }
 ```
+
+Each star object matches the shape documented in [star.md](./objects/star.md).
 
 ---
 
@@ -429,18 +446,18 @@ Same shape as `GET /infinity/cubes/:x/:y/:z` (`{ cube, stars }`).
 
 ##### `GET /infinity/stars/:id`
 
-Fetch a single star by its identifier.
+Fetch a single star by its UUID.
 
 **Path parameters**
 
 | Name | Type | Description |
 |------|------|-------------|
-| `id` | string | Star id (URL-encode spaces: `Alpha%20kikyhk`) |
+| `id` | UUID string | Star primary key |
 
 **Example request**
 
 ```http
-GET /infinity/stars/Alpha%20kikyhk
+GET /infinity/stars/661e8400-e29b-41d4-a716-446655440001
 Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
@@ -448,12 +465,15 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ```json
 {
-  "id": "Alpha kikyhk",
+  "id": "661e8400-e29b-41d4-a716-446655440001",
+  "name": "Alpha kikyhk",
   "local_coords": { "x": 1.0, "y": 2.0, "z": 3.0 },
   "cube_id": "550e8400-e29b-41d4-a716-446655440000",
   "properties": { "type": "yellow" }
 }
 ```
+
+Use `name` for display in the client; use `id` for lookups and references.
 
 **Error responses**
 
@@ -485,11 +505,19 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 ```json
 {
-  "stars": []
+  "stars": [
+    {
+      "id": "661e8400-e29b-41d4-a716-446655440001",
+      "name": "Alpha kikyhk",
+      "local_coords": { "x": 1.0, "y": 2.0, "z": 3.0 },
+      "cube_id": "550e8400-e29b-41d4-a716-446655440000",
+      "properties": { "type": "yellow" }
+    }
+  ]
 }
 ```
 
-Returns an empty array when the cube has no stars or the UUID is unknown.
+Returns an empty array (`{ "stars": [] }`) when the cube has no stars or the UUID is unknown.
 
 **Error responses**
 
@@ -729,7 +757,10 @@ socket.emit('REQUEST_CUBE', { x: 7.1, y: 8.4, z: 10.6 });
 
 ```javascript
 socket.on('CUBE_DATA', (data) => {
-  // { cube: { id, name, origin, star_ids }, stars: [...] }
+  // {
+  //   cube: { id, name, origin, star_ids },
+  //   stars: [{ id, name, local_coords, cube_id, properties }, ...]
+  // }
 });
 ```
 
@@ -741,10 +772,10 @@ socket.on('CUBE_DATA', (data) => {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `starId` | string | Star identifier (e.g. `"Alpha kikyhk"`) |
+| `starId` | UUID string | Star primary key (`stars[].id`) |
 
 ```javascript
-socket.emit('REQUEST_STAR', { starId: 'Alpha kikyhk' });
+socket.emit('REQUEST_STAR', { starId: '661e8400-e29b-41d4-a716-446655440001' });
 ```
 
 **Server behavior**
@@ -757,6 +788,16 @@ socket.emit('REQUEST_STAR', { starId: 'Alpha kikyhk' });
 ### `STAR_DATA` (server → client)
 
 **Payload:** same shape as `GET /infinity/stars/:id`.
+
+```json
+{
+  "id": "661e8400-e29b-41d4-a716-446655440001",
+  "name": "Alpha kikyhk",
+  "local_coords": { "x": 1.0, "y": 2.0, "z": 3.0 },
+  "cube_id": "550e8400-e29b-41d4-a716-446655440000",
+  "properties": { "type": "yellow" }
+}
+```
 
 ---
 
@@ -907,6 +948,8 @@ sequenceDiagram
 
 | Document | Scope |
 |----------|-------|
+| `documentation/objects/cube.md` | Cube object — fields, storage, relationships |
+| `documentation/objects/star.md` | Star object — fields, naming, storage |
 | `documentation/stellar-gate-api.md` | Target auth contract for the StellarGate client (cookie-based JWT, `/infinity` prefix) |
 | `documentation/galaxy/README.md` | Galaxy documentation index (design, naming, phase specs) |
 | `documentation/specifications/galaxy-phase-4-api-design.md` | Phase 4 cube/star REST implementation spec |
