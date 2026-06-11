@@ -22,6 +22,7 @@ This document defines the writing conventions for project documentation in `docu
 - Write project documentation as Markdown files in `documentation/`.
 - Use lowercase kebab-case filenames, for example `cube-based-star-system.md`.
 - Keep object documentation in `documentation/objects/`.
+- Move deprecated or superseded documents to `documentation/archive/` instead of deleting them.
 - Keep API-level documentation in `documentation/infinity-api.md` unless a feature needs a dedicated supporting document.
 - Use relative links between documentation files.
 

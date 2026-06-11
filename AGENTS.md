@@ -111,6 +111,8 @@ E2E tests are optional locally but should be verified before merging features th
 See [rules/documents.md](rules/documents.md) for detailed documentation standards and object-document conventions.
 
 - Write project documentation in the `documentation/` directory as Markdown files
+- Domain object specs (cube, star, star-system, planet): [documentation/objects/](documentation/objects/)
+- Deprecated or superseded documents: [documentation/archive/](documentation/archive/)
 - Add metadata in a YAML block after the title
 - Include date, author, model name, model version, and sources when applicable
 
@@ -180,7 +182,7 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/planets/:planetId` | GET | — |
 | `/infinity/resources/planet/:planetId` | GET | — |
 
-See `documentation/infinity-api.md` for request/response shapes and Socket.IO events.
+See [documentation/infinity-api.md](documentation/infinity-api.md) for request/response shapes and Socket.IO events.
 
 ---
 
