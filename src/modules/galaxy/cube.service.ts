@@ -1,8 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { GALAXY_CONSTANTS } from '../../shared/constants/galaxy.constants';
-import { CubeWithStars, Vec3 } from '../../shared/interfaces/galaxy.interface';
+import { SPAWN_CONSTANTS } from '../../shared/constants/spawn.constants';
+import { CubeData, CubeWithStars, Vec3 } from '../../shared/interfaces/galaxy.interface';
+import { pickSpawnCubeOrigin } from '../../shared/utils/spawn-cube-selection';
 import { formatOriginKey } from '../../shared/utils/coordinates';
 import { generateCube } from '../../shared/utils/galaxy';
 import { isGridAlignedOrigin } from '../../shared/utils/galaxy-generation';
@@ -66,6 +68,43 @@ export class CubeService {
   async invalidateCache(cube: CubeWithStars['cube']): Promise<void> {
     const keys = Object.values(buildCubeCacheKeys(cube));
     await this.redisService.del(...keys);
+  }
+
+  async hasAnyCube(): Promise<boolean> {
+    const doc = await this.cubeModel.findOne().select('_id').lean().exec();
+    return doc !== null;
+  }
+
+  async findById(cubeId: string): Promise<CubeData | null> {
+    const doc = await this.cubeModel.findById(cubeId).lean().exec();
+    if (!doc) {
+      return null;
+    }
+    return toCubeData(doc as Cube);
+  }
+
+  async findRandom(): Promise<CubeData> {
+    const docs = await this.cubeModel.aggregate([{ $sample: { size: 1 } }]).exec();
+    if (docs.length === 0) {
+      throw new NotFoundException('No cubes in database');
+    }
+    return toCubeData(docs[0] as Cube);
+  }
+
+  async existsByOrigin(origin: Vec3): Promise<boolean> {
+    const doc = await this.cubeModel.findOne({ origin }).select('_id').lean().exec();
+    return doc !== null;
+  }
+
+  async pickSpawnCubeOrigin(): Promise<Vec3> {
+    return pickSpawnCubeOrigin({
+      hasAnyCube: () => this.hasAnyCube(),
+      findRandom: () => this.findRandom(),
+      existsByOrigin: (candidate) => this.existsByOrigin(candidate),
+      bootstrapSeedCube: async () => {
+        await this.getOrCreateByOrigin(SPAWN_CONSTANTS.SEED_ORIGIN);
+      },
+    });
   }
 
   private async findInMongoByOrigin(origin: Vec3): Promise<CubeWithStars | null> {

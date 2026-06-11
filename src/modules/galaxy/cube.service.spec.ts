@@ -11,9 +11,18 @@ jest.mock('../../shared/utils/galaxy', () => ({
   generateCube: jest.fn(),
 }));
 
+jest.mock('../../shared/utils/spawn-cube-selection', () => ({
+  ...jest.requireActual('../../shared/utils/spawn-cube-selection'),
+  pickSpawnCubeOrigin: jest.fn(),
+}));
+
 import { generateCube } from '../../shared/utils/galaxy';
+import { pickSpawnCubeOrigin as pickSpawnCubeOriginUtil } from '../../shared/utils/spawn-cube-selection';
 
 const mockedGenerateCube = generateCube as jest.MockedFunction<typeof generateCube>;
+const mockedPickSpawnCubeOrigin = pickSpawnCubeOriginUtil as jest.MockedFunction<
+  typeof pickSpawnCubeOriginUtil
+>;
 
 describe('CubeService', () => {
   let service: CubeService;
@@ -39,7 +48,9 @@ describe('CubeService', () => {
 
   const mockCubeModel = {
     findOne: jest.fn(),
+    findById: jest.fn(),
     create: jest.fn(),
+    aggregate: jest.fn(),
   };
 
   const mockStarService = {
@@ -177,5 +188,95 @@ describe('CubeService', () => {
       'galaxy:cube:id:550e8400-e29b-41d4-a716-446655440000',
       'galaxy:cube:name:kikyhk',
     );
+  });
+
+  it('hasAnyCube returns true when a cube document exists', async () => {
+    mockCubeModel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({ _id: payload.cube.id }),
+        }),
+      }),
+    });
+
+    await expect(service.hasAnyCube()).resolves.toBe(true);
+  });
+
+  it('hasAnyCube returns false when no cube documents exist', async () => {
+    mockCubeModel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue(null),
+        }),
+      }),
+    });
+
+    await expect(service.hasAnyCube()).resolves.toBe(false);
+  });
+
+  it('existsByOrigin returns true when a cube exists at origin', async () => {
+    mockCubeModel.findOne.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockReturnValue({
+          exec: jest.fn().mockResolvedValue({ _id: payload.cube.id }),
+        }),
+      }),
+    });
+
+    await expect(service.existsByOrigin(origin)).resolves.toBe(true);
+    expect(mockCubeModel.findOne).toHaveBeenCalledWith({ origin });
+  });
+
+  it('findRandom returns cube data from aggregate sample', async () => {
+    mockCubeModel.aggregate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue([
+        {
+          _id: payload.cube.id,
+          name: payload.cube.name,
+          origin: payload.cube.origin,
+          star_ids: payload.cube.star_ids,
+        },
+      ]),
+    });
+
+    await expect(service.findRandom()).resolves.toEqual(payload.cube);
+  });
+
+  it('findById returns cube data when document exists', async () => {
+    mockCubeModel.findById.mockReturnValue({
+      lean: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue({
+          _id: payload.cube.id,
+          name: payload.cube.name,
+          origin: payload.cube.origin,
+          star_ids: payload.cube.star_ids,
+        }),
+      }),
+    });
+
+    await expect(service.findById(payload.cube.id)).resolves.toEqual(payload.cube);
+  });
+
+  it('findById returns null when document is missing', async () => {
+    mockCubeModel.findById.mockReturnValue({
+      lean: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue(null),
+      }),
+    });
+
+    await expect(service.findById('missing')).resolves.toBeNull();
+  });
+
+  it('pickSpawnCubeOrigin delegates to spawn selection utility', async () => {
+    mockedPickSpawnCubeOrigin.mockResolvedValue({ x: 10, y: 0, z: 0 });
+
+    await expect(service.pickSpawnCubeOrigin()).resolves.toEqual({ x: 10, y: 0, z: 0 });
+
+    expect(mockedPickSpawnCubeOrigin).toHaveBeenCalledWith({
+      hasAnyCube: expect.any(Function),
+      findRandom: expect.any(Function),
+      existsByOrigin: expect.any(Function),
+      bootstrapSeedCube: expect.any(Function),
+    });
   });
 });

@@ -1,13 +1,15 @@
 # Infinity Server — REST & WebSocket API
 
 ```yaml
-date: 2026-06-09
+date: 2026-06-11
 author: Roro LeSage
 model: Composer
 type: API Reference
 sources:
   - src/modules/auth/
   - src/modules/players/
+  - src/modules/players/player-spawn.service.ts
+  - documentation/first-planet/first-planet-specifications.md
   - src/modules/galaxy/
   - src/modules/planets/
   - src/modules/resources/
@@ -68,8 +70,8 @@ CORS is enabled with `origin: '*'` and `credentials: true` (development only —
 | Token delivery | JSON field `access_token` on `POST /infinity/auth/login` and `POST /infinity/auth/register` |
 | Token lifetime | `1h` (`JwtModule` `signOptions.expiresIn` in `auth.module.ts`) |
 | Header | `Authorization: Bearer <access_token>` |
-| Protected routes | **Cube, star, and star-system endpoints** (`/infinity/cubes/*`, `/infinity/stars/*`, `/infinity/galaxy/systems/*`) require a valid JWT |
-| Public routes | Health, auth, players, planets, resources |
+| Protected routes | **Cube, star, star-system, and first spawn** (`/infinity/cubes/*`, `/infinity/stars/*`, `/infinity/galaxy/systems/*`, `POST /infinity/players/me/enter-game`) require a valid JWT |
+| Public routes | Health, auth, `GET/PATCH /infinity/players/*` (except `enter-game`), planets, resources |
 
 ---
 
@@ -82,6 +84,7 @@ CORS is enabled with `origin: '*'` and `credentials: true` (development only —
 | `GET` | `/infinity/health` | Public | Server health check |
 | `POST` | `/infinity/auth/register` | Public | Create account and return JWT |
 | `POST` | `/infinity/auth/login` | Public | Authenticate and return JWT |
+| `POST` | `/infinity/players/me/enter-game` | JWT | Bootstrap first planet spawn; return playable state |
 | `GET` | `/infinity/players/:userId` | Public | Get or create player profile for a user |
 | `PATCH` | `/infinity/players/:playerId/position` | Public | Update player position |
 | `GET` | `/infinity/galaxy/systems/:systemId` | JWT | Get or generate a star system (`systemId` = star UUID) |
@@ -246,6 +249,115 @@ Fetch the player profile linked to a user. If none exists, a new player is creat
 ```
 
 The `user` relation is not eagerly loaded in the response.
+
+---
+
+#### `POST /infinity/players/me/enter-game`
+
+Bootstrap a **first-time** playable world for the authenticated user, or return the existing spawn context if the player already has a `currentPlanetId`. Intended entry point after StellarGate login (see [first-planet/first-planet-specifications.md](./first-planet/first-planet-specifications.md)).
+
+**Authentication:** JWT required — `Authorization: Bearer <access_token>`. The server resolves the user from the token payload (`sub` → `User.id`).
+
+**Request body:** empty (no body).
+
+**Example request**
+
+```http
+POST /infinity/players/me/enter-game
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Success response — 200 OK**
+
+Returns a single object with the updated player profile, galaxy context, materialized planet document, and surface spawn coordinates.
+
+```json
+{
+  "player": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "userId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "galaxyX": 9.2,
+    "galaxyY": -3.5,
+    "galaxyZ": 3.0,
+    "currentPlanetId": "661e8400-e29b-41d4-a716-446655440001_planet_0",
+    "planetX": 2,
+    "planetY": 5,
+    "createdAt": "2026-06-11T12:00:00.000Z",
+    "updatedAt": "2026-06-11T12:05:00.000Z"
+  },
+  "cube": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "kikyhk",
+    "origin": { "x": 10, "y": 0, "z": 0 },
+    "star_ids": ["661e8400-e29b-41d4-a716-446655440001"]
+  },
+  "star": {
+    "id": "661e8400-e29b-41d4-a716-446655440001",
+    "name": "Alpha kikyhk",
+    "local_coords": { "x": 4.2, "y": 1.5, "z": 8.0 },
+    "cube_id": "550e8400-e29b-41d4-a716-446655440000",
+    "properties": { "type": "yellow" }
+  },
+  "starSystemId": "661e8400-e29b-41d4-a716-446655440001",
+  "planet": {
+    "_id": "661e8400-e29b-41d4-a716-446655440001_planet_0",
+    "name": "Planet 1",
+    "starSystemId": "661e8400-e29b-41d4-a716-446655440001",
+    "type": "rocky",
+    "radius": 9,
+    "resources": { "iron": 420, "gold": 75, "water": 1300 },
+    "surface": {
+      "hexagons": [
+        {
+          "biome": "desert",
+          "resources": [],
+          "dangerLevel": 3,
+          "coordinates": { "q": 0, "r": 0 }
+        }
+      ],
+      "generatedAt": "2026-06-11T12:05:00.000Z"
+    },
+    "createdAt": "2026-06-11T12:05:00.000Z",
+    "updatedAt": "2026-06-11T12:05:00.000Z"
+  },
+  "surfacePosition": { "q": 2, "r": 5 }
+}
+```
+
+| Field | Description |
+|-------|-------------|
+| `player` | PostgreSQL `Player` after spawn — `galaxyX/Y/Z` are **global** star coordinates; `planetX`/`planetY` map to hex `q`/`r` |
+| `cube` | Spawn cube metadata (new adjacent cube on first entry; seed `(0,0,0)` is never a spawn target) |
+| `star` | Parent star in the spawn cube |
+| `starSystemId` | Same as `star.id` (`StarSystem._id`) |
+| `planet` | Full MongoDB `Planet` document (same shape as `GET /infinity/planets/:planetId`) |
+| `surfacePosition` | Hex coords written to Redis via `joinPlanet` — restored on subsequent `PLANET_JOIN` |
+
+**Server behavior (first entry)**
+
+1. Find or create `Player` for JWT `sub`.
+2. If `currentPlanetId` is set → reload planet/star/cube; **no** new world generation.
+3. Otherwise orchestrate spawn: pick adjacent cube origin → create cube + stars → random star → star system → **largest `rocky` planet** → materialize `Planet` + surface → random hex position in Redis → persist `Player` **last**.
+
+**Server behavior (repeat call)**
+
+Idempotent: returns the same spawn context for an already-spawned player without creating new cubes or planets.
+
+**Error responses**
+
+| Status | Condition |
+|--------|-----------|
+| `401 Unauthorized` | Missing or invalid JWT |
+| `404 Not Found` | Existing spawn references missing star/cube/planet (data inconsistency) |
+| `503 Service Unavailable` | `{ "statusCode": 503, "message": "Unable to allocate spawn location" }` — spawn retries exhausted (extremely unlikely) |
+
+**Client flow (StellarGate first entry)**
+
+1. `POST /infinity/auth/login` → `access_token`
+2. `POST /infinity/players/me/enter-game` (Bearer) → render planet from response
+3. Socket.IO `PLANET_JOIN` with `planetId` → restores `surfacePosition` from Redis
+
+> **Cookie auth:** StellarGate targets `httpOnly` cookie `infinity_token` instead of Bearer tokens — see [stellar-gate-api.md](./stellar-gate-api.md) and [fix-later.md](./fix-later.md) §1. Until cookie extraction is implemented, use Bearer JWT in development.
 
 ---
 
@@ -910,7 +1022,7 @@ socket.on('GALAXY_UPDATE', (data) => {
 
 ### `PLANET_JOIN` (client → server)
 
-Join the Socket.IO room named after `planetId` and resolve the player's hex position. Call after `GET /infinity/planets/:planetId` has created or loaded the planet document.
+Join the Socket.IO room named after `planetId` and resolve the player's hex position. Call after the planet document exists — via `POST /infinity/players/me/enter-game` (first entry) or `GET /infinity/planets/:planetId` (manual star-system entry).
 
 **Payload**
 
@@ -1029,9 +1141,16 @@ sequenceDiagram
   REST->>DB: Create User
   REST-->>Client: { access_token }
 
-  Client->>REST: GET /infinity/players/{userId}
-  REST->>DB: Find or create Player
-  REST-->>Client: Player profile
+  Client->>REST: POST /infinity/players/me/enter-game (Bearer token)
+  REST->>DB: Spawn cube, star system, planet; update Player
+  REST-->>Client: { player, cube, star, planet, surfacePosition }
+
+  Client->>WS: connect
+  Client->>WS: PLANET_JOIN { planetId }
+  WS->>DB: Redis position (restore from enter-game)
+  WS-->>Client: PLANET_UPDATE { playerId, q, r }
+
+  Note over Client,REST: Manual galaxy navigation (optional)
 
   Client->>REST: GET /infinity/cubes/{x}/{y}/{z} (Bearer token)
   REST->>DB: Find or generate Cube + Stars
@@ -1045,10 +1164,6 @@ sequenceDiagram
   REST->>DB: Find or generate Planet (hex surface)
   REST-->>Client: Planet + surface.hexagons[]
 
-  Client->>WS: connect
-  Client->>WS: PLANET_JOIN { planetId }
-  WS->>DB: Redis position (spawn or restore)
-  WS-->>Client: PLANET_UPDATE { playerId, q, r }
   Client->>WS: REQUEST_CUBE { x, y, z } (global)
   WS-->>Client: CUBE_DATA { cube, stars }
 
@@ -1069,6 +1184,8 @@ sequenceDiagram
 | `documentation/planets/hexagonal-planet-specification.md` | Hex planet surface — grid, generation, REST behavior |
 | `documentation/planets/development-plan.md` | Hex planet implementation phases and test plan |
 | `documentation/stellar-system/README.md` | Stellar system feature — implementation status |
+| `documentation/first-planet/first-planet-specifications.md` | First spawn orchestration rules and selection algorithms |
+| `documentation/first-planet/development-plan.md` | First-planet implementation phases |
 | `documentation/stellar-gate-api.md` | Target auth contract for the StellarGate client (cookie-based JWT, `/infinity` prefix) |
 | `documentation/galaxy/README.md` | Galaxy documentation index (design, naming, phase specs) |
 | `documentation/specifications/galaxy-phase-4-api-design.md` | Phase 4 cube/star REST implementation spec |
@@ -1084,4 +1201,4 @@ sequenceDiagram
 - JWT on WebSocket connections
 - `CUBE_UPDATED` broadcasts (deferred until planets-on-star)
 - REST endpoint for resource harvesting (`ResourcesService.harvest` is service-only)
-- Redis-backed session or player position caching (Redis is used for cube cache only)
+- Redis-backed session caching (Redis is used for cube cache and planet surface positions)

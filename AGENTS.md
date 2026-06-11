@@ -171,6 +171,7 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/health` | GET | public |
 | `/infinity/auth/register` | POST | public |
 | `/infinity/auth/login` | POST | public |
+| `/infinity/players/me/enter-game` | POST | JWT |
 | `/infinity/players/:userId` | GET | — |
 | `/infinity/players/:playerId/position` | PATCH | — |
 | `/infinity/cubes/:x/:y/:z` | GET | JWT |
