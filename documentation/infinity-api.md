@@ -561,7 +561,7 @@ Authorization: Bearer <jwt>
       "name": "Planet 1",
       "x": 142.8,
       "y": 67.3,
-      "radius": 8.4,
+      "radius": 9,
       "type": "rocky",
       "resources": {
         "iron": 742,
@@ -593,7 +593,9 @@ Planet count and layout are procedurally generated on first access. The same id 
 
 ### Planets
 
-Planet surface data is stored in **MongoDB**. Planets are **generated on first access** if the `planetId` does not exist.
+Landable planet surfaces are stored in **MongoDB** as **`Planet`** documents with a nested toroidal hex grid (`surface.hexagons[]`). A document is **created on first player entry** when the `planetId` does not exist yet. **Gas planets** never get a document.
+
+See [planets/hexagonal-planet-specification.md](./planets/hexagonal-planet-specification.md) for domain rules.
 
 #### `GET /infinity/planets/:planetId`
 
@@ -601,51 +603,89 @@ Planet surface data is stored in **MongoDB**. Planets are **generated on first a
 
 | Name | Type | Description |
 |------|------|-------------|
-| `planetId` | string | Unique planet identifier (MongoDB `_id` and generation seed) |
+| `planetId` | string | Same as `StarSystem.planets[].id` — MongoDB `_id` and procedural generation seed |
 
 **Query parameters**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `systemId` | string | no | Parent star UUID / stellar system id; stored as `starSystemId` when the planet document is first generated |
+| `systemId` | string | **Yes on first entry**; optional on reload | Parent star UUID (`StarSystem._id`). Used to load the matching `planets[]` summary when creating the document. |
 
-**Example request**
+**Example request (first entry from star-system view)**
 
 ```http
-GET /infinity/planets/alpha-centauri_planet_0?systemId=alpha-centauri
+GET /infinity/planets/661e8400-e29b-41d4-a716-446655440001_planet_0?systemId=661e8400-e29b-41d4-a716-446655440001
+```
+
+**Example request (reload — document already exists)**
+
+```http
+GET /infinity/planets/661e8400-e29b-41d4-a716-446655440001_planet_0
 ```
 
 **Success response — 200 OK**
 
 ```json
 {
-  "_id": "alpha-centauri_planet_0",
-  "name": "Planet alpha-cen",
-  "starSystemId": "alpha-centauri",
-  "seed": "alpha-centauri_planet_0",
-  "biomeTypes": ["grass", "ocean", "mountain", "desert"],
+  "_id": "661e8400-e29b-41d4-a716-446655440001_planet_0",
+  "name": "Planet 1",
+  "starSystemId": "661e8400-e29b-41d4-a716-446655440001",
+  "type": "rocky",
+  "radius": 5,
   "resources": {
-    "iron": 3200,
-    "gold": 890,
-    "water": 7500,
-    "crystal": 412
+    "iron": 420,
+    "gold": 75,
+    "water": 1300
   },
-  "heightMap": [[0.12, -0.05, ...], ...],
-  "tileMap": [["grass", "water", ...], ...],
-  "visited": true,
-  "createdAt": "2026-06-07T12:00:00.000Z",
-  "updatedAt": "2026-06-07T12:00:00.000Z"
+  "surface": {
+    "hexagons": [
+      {
+        "biome": "desert",
+        "resources": [],
+        "dangerLevel": 3,
+        "coordinates": { "q": 0, "r": 0 }
+      }
+    ],
+    "generatedAt": "2026-06-11T12:00:00.000Z"
+  },
+  "createdAt": "2026-06-11T12:00:00.000Z",
+  "updatedAt": "2026-06-11T12:00:00.000Z"
 }
 ```
 
+> The example shows **one** hex in `surface.hexagons`. A full surface contains **`radius × radius`** cells (25 when `radius` is 5). Per-hex `resources` are **`[]`** in the current MVP.
+
 | Field | Description |
 |-------|-------------|
-| `heightMap` | 64×64 grid of elevation values (Perlin noise, range roughly −1 to 1) |
-| `tileMap` | 64×64 grid of tile types: `grass`, `sand`, `water`, `stone`, `snow`, `dirt` |
-| `biomeTypes` | Derived biome labels: `grass`, `desert`, `forest`, `ocean`, `mountain`, `tundra` |
-| `resources` | Aggregate resource quantities for the planet surface |
+| `_id` | Same as summary `planets[].id` |
+| `name` | Inherited from `StarSystem.planets[].name` |
+| `starSystemId` | Parent star UUID |
+| `type` | Inherited — `rocky`, `gas`, `ice`, or `lava` (only landable types get a document) |
+| `radius` | Inherited odd integer **5–15** — hex grid edge length; `radius × radius` cells |
+| `resources` | Inherited summary quantities from `StarSystem.planets[].resources` |
+| `surface.hexagons` | Generated toroidal hex layer |
+| `surface.hexagons[].biome` | `desert`, `forest`, `ocean`, `mountain`, `ice`, or `volcanic` |
+| `surface.hexagons[].resources` | Per-hex deposits — empty array in MVP |
+| `surface.hexagons[].dangerLevel` | Integer `0–10` |
+| `surface.hexagons[].coordinates` | Axial `q`, `r` with `0 ≤ q, r < radius` |
+| `surface.generatedAt` | Timestamp of first surface generation |
 
-> **Note:** When `systemId` is omitted on first generation, `starSystemId` defaults to `"unknown"`. Clients should pass `?systemId={starUuid}` (the cube star UUID) when opening a planet from a star system. Planet ids in embedded summaries use `{starUuid}_planet_{index}`.
+**Server behavior**
+
+1. If a **`Planet`** document exists → return it (`systemId` optional).
+2. If no document → **`systemId` required**. Load `StarSystem`, find matching `planets[]` entry.
+3. If summary `type` is **`gas`** → **422**; no document created.
+4. If landable → copy inherited fields, generate `surface`, save, return **200**.
+
+**Error responses**
+
+| Status | Condition |
+|--------|-----------|
+| `400 Bad Request` | First entry without `systemId` |
+| `404 Not Found` | `planetId` not found in `StarSystem.planets[]` (or star system missing) |
+| `422 Unprocessable Entity` | Summary `type` is `gas` — no enterable surface |
+
+> **Client flow:** Enter star → `GET /infinity/galaxy/systems/:systemId` → pick a landable planet from `planets[]` → `GET /infinity/planets/:planetId?systemId={starId}`. Disable entry UI for `type: gas`.
 
 ---
 
@@ -724,8 +764,11 @@ const socket = io('http://localhost:4000', { transports: ['websocket'] });
 | Client → Server | `REQUEST_STAR` | Request star data by id |
 | Server → Client | `STAR_DATA` | Star document (to requesting client) |
 | Server → Client | `GALAXY_ERROR` | Error response for cube/star requests |
-| Client → Server | `PLANET_MOVE` | Player moved on a planet surface |
-| Server → Client | `PLANET_UPDATE` | Planet-room movement update |
+| Client → Server | `PLANET_JOIN` | Join planet Socket.IO room; random spawn or Redis restore |
+| Client → Server | `PLANET_LEAVE` | Leave planet room |
+| Client → Server | `PLANET_MOVE` | Player moved on hex surface `(q, r)` |
+| Server → Client | `PLANET_UPDATE` | Planet-room position update `{ playerId, planetId, q, r }` |
+| Server → Client | `PLANET_ERROR` | Error response for planet socket handlers |
 
 Authentication is **not** enforced on WebSocket connections.
 
@@ -865,31 +908,80 @@ socket.on('GALAXY_UPDATE', (data) => {
 
 ---
 
-### `PLANET_MOVE` (client → server)
+### `PLANET_JOIN` (client → server)
 
-Notify the server of movement on a planet surface. Clients should join the planet room (Socket.IO room named after `planetId`) to receive updates for that planet.
+Join the Socket.IO room named after `planetId` and resolve the player's hex position. Call after `GET /infinity/planets/:planetId` has created or loaded the planet document.
 
 **Payload**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `planetId` | string | Planet identifier (also used as room name) |
-| `x` | number | Surface X |
-| `y` | number | Surface Y |
+| `planetId` | string | Planet identifier (room name) |
 
 **Example**
 
 ```javascript
-socket.emit('join', planetId); // room join — not yet handled server-side
-socket.emit('PLANET_MOVE', { planetId: 'alpha-centauri_planet_0', x: 32, y: 18 });
+socket.emit('PLANET_JOIN', { planetId: '661e8400-e29b-41d4-a716-446655440001_planet_0' });
 ```
 
 **Server behavior**
 
-- Logs the movement (via `PlanetsService.handlePlayerMove`)
-- Emits `PLANET_UPDATE` to the room `planetId` only
+1. Restore last `(q, r)` from **Redis** when present for this socket id + planet.
+2. Otherwise pick a **random** hex with `0 ≤ q, r < radius` and store in Redis.
+3. Add the client to room `planetId`.
+4. Emit `PLANET_UPDATE` to the room (including the joining client).
 
-> **Gap:** The gateway does not currently handle a `join` message to add clients to planet rooms. Room membership must be set up before `PLANET_UPDATE` delivery works as intended.
+**Error responses** — server emits `PLANET_ERROR` to the requesting client:
+
+| Status | Condition |
+|--------|-----------|
+| `400` | Missing `planetId` |
+| `404` | Planet document not found (REST load required first) |
+
+---
+
+### `PLANET_LEAVE` (client → server)
+
+Leave the planet Socket.IO room. Redis position is **kept** so a later `PLANET_JOIN` restores the last hex.
+
+**Payload**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `planetId` | string | Planet identifier (room name) |
+
+```javascript
+socket.emit('PLANET_LEAVE', { planetId: '661e8400-e29b-41d4-a716-446655440001_planet_0' });
+```
+
+---
+
+### `PLANET_MOVE` (client → server)
+
+Notify the server of movement on a planet hex surface. All moves are accepted in the MVP (no bounds or neighbor validation yet).
+
+**Payload**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `planetId` | string | Planet identifier (room name) |
+| `q` | number | Axial hex coordinate |
+| `r` | number | Axial hex coordinate |
+
+**Example**
+
+```javascript
+socket.emit('PLANET_MOVE', {
+  planetId: '661e8400-e29b-41d4-a716-446655440001_planet_0',
+  q: 2,
+  r: 4,
+});
+```
+
+**Server behavior**
+
+- Persists `(q, r)` to Redis (`planet:position:{planetId}:{socketId}`)
+- Emits `PLANET_UPDATE` to room `planetId`
 
 ---
 
@@ -901,14 +993,26 @@ socket.emit('PLANET_MOVE', { planetId: 'alpha-centauri_planet_0', x: 32, y: 18 }
 |-------|------|-------------|
 | `playerId` | string | Socket.IO client id |
 | `planetId` | string | Planet identifier |
-| `x` | number | Surface X |
-| `y` | number | Surface Y |
+| `q` | number | Axial hex coordinate |
+| `r` | number | Axial hex coordinate |
 
 ```javascript
 socket.on('PLANET_UPDATE', (data) => {
-  // { playerId: 'abc123', planetId: 'alpha-centauri_planet_0', x: 32, y: 18 }
+  // { playerId: 'abc123', planetId: '661e8400-..._planet_0', q: 2, r: 4 }
 });
 ```
+
+---
+
+### `PLANET_ERROR` (server → client)
+
+**Payload**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `event` | string | Source event (`PLANET_JOIN`, `PLANET_MOVE`, …) |
+| `message` | string | Human-readable error |
+| `statusCode` | number | Suggested HTTP-style code |
 
 ---
 
@@ -937,11 +1041,14 @@ sequenceDiagram
   REST->>DB: Find or generate StarSystem
   REST-->>Client: Star system + planet list
 
-  Client->>REST: GET /infinity/planets/{planetId}
-  REST->>DB: Find or generate Planet
-  REST-->>Client: Planet surface data
+  Client->>REST: GET /infinity/planets/{planetId}?systemId={starId}
+  REST->>DB: Find or generate Planet (hex surface)
+  REST-->>Client: Planet + surface.hexagons[]
 
   Client->>WS: connect
+  Client->>WS: PLANET_JOIN { planetId }
+  WS->>DB: Redis position (spawn or restore)
+  WS-->>Client: PLANET_UPDATE { playerId, q, r }
   Client->>WS: REQUEST_CUBE { x, y, z } (global)
   WS-->>Client: CUBE_DATA { cube, stars }
 
@@ -958,6 +1065,9 @@ sequenceDiagram
 | `documentation/objects/cube.md` | Cube object — fields, storage, relationships |
 | `documentation/objects/star.md` | Star object — fields, naming, storage |
 | `documentation/objects/star-system.md` | Star system object — enter-star, planets, generation |
+| `documentation/objects/planet.md` | Planet object — hex surface document |
+| `documentation/planets/hexagonal-planet-specification.md` | Hex planet surface — grid, generation, REST behavior |
+| `documentation/planets/development-plan.md` | Hex planet implementation phases and test plan |
 | `documentation/stellar-system/README.md` | Stellar system feature — implementation status |
 | `documentation/stellar-gate-api.md` | Target auth contract for the StellarGate client (cookie-based JWT, `/infinity` prefix) |
 | `documentation/galaxy/README.md` | Galaxy documentation index (design, naming, phase specs) |

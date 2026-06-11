@@ -6,6 +6,7 @@ import { GalaxyService } from '../galaxy/galaxy.service';
 import { StarService } from '../galaxy/star.service';
 import { PlanetsService } from '../planets/planets.service';
 import { GALAXY_EVENTS } from './events/galaxy.events';
+import { PLANET_EVENTS } from './events/planet.events';
 import { SocketGateway } from './socket.gateway';
 
 describe('SocketGateway galaxy events', () => {
@@ -34,6 +35,7 @@ describe('SocketGateway galaxy events', () => {
   const mockClient = {
     id: 'socket-1',
     join: jest.fn().mockResolvedValue(undefined),
+    leave: jest.fn().mockResolvedValue(undefined),
     emit: jest.fn(),
   } as unknown as Socket;
 
@@ -43,7 +45,10 @@ describe('SocketGateway galaxy events', () => {
   };
 
   const mockGalaxyService = { handlePlayerMove: jest.fn() };
-  const mockPlanetsService = { handlePlayerMove: jest.fn() };
+  const mockPlanetsService = {
+    joinPlanet: jest.fn(),
+    handlePlayerMove: jest.fn(),
+  };
   const mockCubeService = { getOrCreateByOrigin: jest.fn() };
   const mockStarService = { findById: jest.fn() };
 
@@ -137,3 +142,98 @@ describe('SocketGateway galaxy events', () => {
     expect(mockCubeService.getOrCreateByOrigin).not.toHaveBeenCalled();
   });
 });
+
+describe('SocketGateway planet events', () => {
+  let gateway: SocketGateway;
+
+  const mockClient = {
+    id: 'socket-1',
+    join: jest.fn().mockResolvedValue(undefined),
+    leave: jest.fn().mockResolvedValue(undefined),
+    emit: jest.fn(),
+  } as unknown as Socket;
+
+  const mockServer = {
+    emit: jest.fn(),
+    to: jest.fn().mockReturnThis(),
+  };
+
+  const mockPlanetsService = {
+    joinPlanet: jest.fn(),
+    handlePlayerMove: jest.fn(),
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SocketGateway,
+        { provide: GalaxyService, useValue: { handlePlayerMove: jest.fn() } },
+        { provide: PlanetsService, useValue: mockPlanetsService },
+        { provide: CubeService, useValue: { getOrCreateByOrigin: jest.fn() } },
+        { provide: StarService, useValue: { findById: jest.fn() } },
+      ],
+    }).compile();
+
+    gateway = module.get(SocketGateway);
+    gateway.server = mockServer as never;
+  });
+
+  it('PLANET_JOIN joins room, resolves spawn, and broadcasts PLANET_UPDATE', async () => {
+    mockPlanetsService.joinPlanet.mockResolvedValue({
+      planetId: 'alpha-centauri_planet_0',
+      q: 2,
+      r: 3,
+    });
+
+    await gateway.handlePlanetJoin(mockClient, { planetId: 'alpha-centauri_planet_0' });
+
+    expect(mockPlanetsService.joinPlanet).toHaveBeenCalledWith(
+      'socket-1',
+      'alpha-centauri_planet_0',
+    );
+    expect(mockClient.join).toHaveBeenCalledWith('alpha-centauri_planet_0');
+    expect(mockServer.to).toHaveBeenCalledWith('alpha-centauri_planet_0');
+    expect(mockServer.emit).toHaveBeenCalledWith(PLANET_EVENTS.UPDATE, {
+      playerId: 'socket-1',
+      planetId: 'alpha-centauri_planet_0',
+      q: 2,
+      r: 3,
+    });
+  });
+
+  it('PLANET_LEAVE removes client from planet room', async () => {
+    await gateway.handlePlanetLeave(mockClient, { planetId: 'alpha-centauri_planet_0' });
+
+    expect(mockClient.leave).toHaveBeenCalledWith('alpha-centauri_planet_0');
+  });
+
+  it('PLANET_MOVE persists position and broadcasts PLANET_UPDATE with q/r', async () => {
+    mockPlanetsService.handlePlayerMove.mockResolvedValue({
+      planetId: 'alpha-centauri_planet_0',
+      q: 4,
+      r: 1,
+    });
+
+    await gateway.handlePlanetMove(mockClient, {
+      planetId: 'alpha-centauri_planet_0',
+      q: 4,
+      r: 1,
+    });
+
+    expect(mockPlanetsService.handlePlayerMove).toHaveBeenCalledWith('socket-1', {
+      planetId: 'alpha-centauri_planet_0',
+      q: 4,
+      r: 1,
+    });
+    expect(mockServer.to).toHaveBeenCalledWith('alpha-centauri_planet_0');
+    expect(mockServer.emit).toHaveBeenCalledWith(PLANET_EVENTS.UPDATE, {
+      playerId: 'socket-1',
+      planetId: 'alpha-centauri_planet_0',
+      q: 4,
+      r: 1,
+    });
+  });
+});
+

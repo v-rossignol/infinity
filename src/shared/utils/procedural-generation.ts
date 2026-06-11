@@ -1,4 +1,5 @@
 import { Noise } from 'noisejs';
+import { GAME_CONSTANTS } from '../constants/game.constants';
 
 interface StarSystemGenerationData {
   name: string;
@@ -16,6 +17,13 @@ interface StarSystemGenerationData {
 interface GenerateStarSystemOptions {
   seed: string;
 }
+
+/** Odd integer in [PLANET_RADIUS_MIN, PLANET_RADIUS_MAX] — hex grid edge length. */
+export const rollOddPlanetRadius = (random: () => number = Math.random): number => {
+  const { PLANET_RADIUS_MIN, PLANET_RADIUS_MAX } = GAME_CONSTANTS;
+  const slotCount = (PLANET_RADIUS_MAX - PLANET_RADIUS_MIN) / 2 + 1;
+  return Math.floor(random() * slotCount) * 2 + PLANET_RADIUS_MIN;
+};
 
 const createNoise = (seed: string): Noise => {
   const noise = new Noise();
@@ -39,7 +47,7 @@ export const generateStarSystem = (
       name: `Planet ${i + 1}`,
       x: Math.cos(angle) * distance,
       y: Math.sin(angle) * distance,
-      radius: 5 + Math.random() * 10,
+      radius: rollOddPlanetRadius(),
       type: ['rocky', 'gas', 'ice', 'lava'][Math.floor(Math.random() * 4)],
       resources: {
         iron: Math.floor(Math.random() * 1000),

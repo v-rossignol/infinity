@@ -74,7 +74,7 @@ This plan tracks delivery of the **stellar system** feature: the inner view (pla
 | **2 — Schema** | Code | **Done** — removed `StarSystem.stars[]`; cube stars unchanged |
 | **3 — Generation** | Code | **Done** — seed from star UUID; star/cube properties do not alter generation |
 | **4 — API polish** | Code + docs | **Partial** — JWT on enter-star route; rename param to `:starId` still open |
-| **5 — Planets** | Code | Default `Planet.starSystemId` from path when `_id` is star UUID; deprecate query param if redundant |
+| **5 — Planets** | Code | Default `Planet.starSystemId` from path when `_id` is star UUID; hex surface model — see [planets/development-plan.md](../planets/development-plan.md) |
 | **6 — Quality** | Tests | Unit + integration coverage per [Planned test coverage](#planned-test-coverage) |
 
 Phase **0–3** and auth (phase **4**) are complete. Phases **4** (param rename), **5**, and **6** remain open.
@@ -92,7 +92,8 @@ Phase **0–3** and auth (phase **4**) are complete. Phases **4** (param rename)
 | 5 | Controller param rename `:starId` | 4 | Optional alias period for `:systemId` |
 | 6 | Auth for enter-star route | 4 | **Done** — JWT (aligned with cube/star routes) |
 | 7 | Tests for `StarSystemService` | 6 | See test table below |
-| 8 | Redis / WebSocket evaluation | 6 | Only if needed after alignment |
+| 8 | **Odd integer `planets[].radius`** | 5 | **Done** — see [planets/development-plan.md](../planets/development-plan.md) Phase 1 |
+| 9 | Redis / WebSocket evaluation | 6 | Only if needed after alignment |
 
 | Scope | Test case |
 |-------|-----------|

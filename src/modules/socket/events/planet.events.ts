@@ -3,4 +3,5 @@ export const PLANET_EVENTS = {
   UPDATE: 'PLANET_UPDATE',
   JOIN: 'PLANET_JOIN',
   LEAVE: 'PLANET_LEAVE',
+  ERROR: 'PLANET_ERROR',
 } as const;

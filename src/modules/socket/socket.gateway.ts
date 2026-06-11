@@ -13,6 +13,7 @@ import { GalaxyService } from '../galaxy/galaxy.service';
 import { StarService } from '../galaxy/star.service';
 import { PlanetsService } from '../planets/planets.service';
 import { GALAXY_EVENTS, getCubeRoomName } from './events/galaxy.events';
+import { PLANET_EVENTS } from './events/planet.events';
 
 @WebSocketGateway({ namespace: '/' })
 export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -82,16 +83,66 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('PLANET_MOVE')
-  handlePlanetMove(client: Socket, payload: { planetId: string; x: number; y: number }) {
-    this.planetsService.handlePlayerMove(client.id, payload);
-    this.server.to(payload.planetId).emit('PLANET_UPDATE', { playerId: client.id, ...payload });
+  @SubscribeMessage(PLANET_EVENTS.JOIN)
+  async handlePlanetJoin(client: Socket, payload: { planetId: string }) {
+    try {
+      if (!payload?.planetId) {
+        this.emitPlanetError(client, PLANET_EVENTS.JOIN, 'planetId is required', 400);
+        return;
+      }
+
+      const position = await this.planetsService.joinPlanet(client.id, payload.planetId);
+      await client.join(payload.planetId);
+      this.server.to(payload.planetId).emit(PLANET_EVENTS.UPDATE, {
+        playerId: client.id,
+        ...position,
+      });
+    } catch (error) {
+      this.handlePlanetHandlerError(client, PLANET_EVENTS.JOIN, error);
+    }
+  }
+
+  @SubscribeMessage(PLANET_EVENTS.LEAVE)
+  async handlePlanetLeave(client: Socket, payload: { planetId: string }) {
+    if (!payload?.planetId) {
+      this.emitPlanetError(client, PLANET_EVENTS.LEAVE, 'planetId is required', 400);
+      return;
+    }
+
+    await client.leave(payload.planetId);
+  }
+
+  @SubscribeMessage(PLANET_EVENTS.MOVE)
+  async handlePlanetMove(client: Socket, payload: { planetId: string; q: number; r: number }) {
+    try {
+      if (!payload?.planetId || !this.isValidHexCoord(payload.q) || !this.isValidHexCoord(payload.r)) {
+        this.emitPlanetError(
+          client,
+          PLANET_EVENTS.MOVE,
+          'planetId, q, and r are required numeric fields',
+          400,
+        );
+        return;
+      }
+
+      const position = await this.planetsService.handlePlayerMove(client.id, payload);
+      this.server.to(payload.planetId).emit(PLANET_EVENTS.UPDATE, {
+        playerId: client.id,
+        ...position,
+      });
+    } catch (error) {
+      this.handlePlanetHandlerError(client, PLANET_EVENTS.MOVE, error);
+    }
   }
 
   private isValidPosition(position: { x: number; y: number; z: number }): boolean {
     return [position?.x, position?.y, position?.z].every(
       (value) => typeof value === 'number' && Number.isFinite(value),
     );
+  }
+
+  private isValidHexCoord(value: number): boolean {
+    return typeof value === 'number' && Number.isFinite(value);
   }
 
   private emitGalaxyError(
@@ -101,6 +152,15 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     statusCode: number,
   ): void {
     client.emit(GALAXY_EVENTS.ERROR, { event, message, statusCode });
+  }
+
+  private emitPlanetError(
+    client: Socket,
+    event: string,
+    message: string,
+    statusCode: number,
+  ): void {
+    client.emit(PLANET_EVENTS.ERROR, { event, message, statusCode });
   }
 
   private handleGalaxyHandlerError(client: Socket, event: string, error: unknown): void {
@@ -118,5 +178,22 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     console.error(`Galaxy socket handler error (${event}):`, error);
     this.emitGalaxyError(client, event, 'Internal server error', 500);
+  }
+
+  private handlePlanetHandlerError(client: Socket, event: string, error: unknown): void {
+    if (error instanceof BadRequestException) {
+      const message = typeof error.message === 'string' ? error.message : 'Bad Request';
+      this.emitPlanetError(client, event, message, 400);
+      return;
+    }
+
+    if (error instanceof NotFoundException) {
+      const message = typeof error.message === 'string' ? error.message : 'Not Found';
+      this.emitPlanetError(client, event, message, 404);
+      return;
+    }
+
+    console.error(`Planet socket handler error (${event}):`, error);
+    this.emitPlanetError(client, event, 'Internal server error', 500);
   }
 }

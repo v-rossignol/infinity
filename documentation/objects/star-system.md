@@ -53,7 +53,7 @@ There is **no** embedded `stars[]` field. Load the parent star separately via `G
 | `id` | string | `{starId}_planet_{index}` — links to detailed `Planet` documents |
 | `name` | string | Display name (e.g. `Planet 1`) |
 | `x`, `y` | number | Local 2D position in the system view |
-| `radius` | number | Planet radius |
+| `radius` | number | Hex grid edge length — **odd integer** from **5** to **15** |
 | `type` | string | `rocky`, `gas`, `ice`, or `lava` |
 | `resources` | Record<string, number> | Summary quantities (`iron`, `gold`, `water`, …) |
 
@@ -73,7 +73,7 @@ Unlike [cube](./cube.md) and [star](./star.md) responses, the enter-star endpoin
       "name": "Planet 1",
       "x": 145.2,
       "y": 34.8,
-      "radius": 11.4,
+      "radius": 11,
       "type": "rocky",
       "resources": { "iron": 420, "gold": 75, "water": 1300 }
     }
@@ -171,7 +171,7 @@ First-time generation is handled by `StarSystemService.generateStarSystem()` and
 | Planet id | `{seed}_planet_{index}` |
 | Planet name | `Planet {index + 1}` |
 | Planet position | Random angle; distance `100 + noise.perlin2(index, 1) * 50` from center `(0, 0)` |
-| Planet radius | `5 + Math.random() * 10` |
+| Planet radius | Odd integer **5–15** via `rollOddPlanetRadius()` (`PLANET_RADIUS_MIN` / `MAX`) |
 | Planet type | Random `rocky`, `gas`, `ice`, `lava` |
 | Planet resources | `iron`, `gold`, `water` via `Math.floor(Math.random() * max)` |
 
@@ -200,6 +200,7 @@ See [infinity-api.md](../infinity-api.md) for full request/response details.
 
 ## Related documents
 
+- [planet.md](./planet.md) — detailed planet surface document (hex grid)
 - [star.md](./star.md) — parent star object (galaxy map layer)
 - [cube.md](./cube.md) — parent cube (contains stars only)
 - [Stellar System Summary](../stellar-system/stellar-system-summary.md) — domain reference and migration notes

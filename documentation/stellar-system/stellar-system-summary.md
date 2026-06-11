@@ -120,7 +120,7 @@ No `stars[]` field — the parent **Star** document is the single star. Load it 
 | `id` | string | `{starId}_planet_{index}` — links to detailed `Planet` documents. |
 | `name` | string | Display name (e.g. `Planet 1`). |
 | `x`, `y` | number | Local 2D position in the system view. |
-| `radius` | number | Planet radius. |
+| `radius` | number | Hex grid edge length — **odd integer** from **5** to **15**. |
 | `type` | string | `rocky`, `gas`, `ice`, or `lava`. |
 | `resources` | Record<string, number> | Summary quantities (`iron`, `gold`, `water`, …). |
 
@@ -144,7 +144,7 @@ Example response:
       "name": "Planet 1",
       "x": 145.2,
       "y": 34.8,
-      "radius": 11.4,
+      "radius": 11,
       "type": "rocky",
       "resources": { "iron": 420, "gold": 75, "water": 1300 }
     }
@@ -205,7 +205,7 @@ Integer Perlin coordinates return `0` with the current `noisejs` dependency, fix
 | Planet id | `{seed}_planet_{index}` |
 | Planet name | `Planet {index + 1}` |
 | Planet position | Angle random; distance `100 + noise.perlin2(index, 1) * 50` from system center `(0, 0)` |
-| Planet radius | `5 + Math.random() * 10` |
+| Planet radius | Odd integer **5–15** via `rollOddPlanetRadius()` |
 | Planet type | Random `rocky`, `gas`, `ice`, `lava` |
 | Planet resources | `iron`, `gold`, `water` via `Math.floor(Math.random() * max)` |
 
