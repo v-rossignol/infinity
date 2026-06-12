@@ -75,6 +75,7 @@ POSTGRES_HOST, POSTGRES_PORT, POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB
 MONGO_URI
 REDIS_HOST, REDIS_PORT
 JWT_SECRET
+DEFAULT_ADMIN_USERNAME, DEFAULT_ADMIN_PASSWORD, DEFAULT_ADMIN_EMAIL (optional)
 ```
 
 ---
@@ -182,6 +183,9 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/health` | GET | public |
 | `/infinity/auth/register` | POST | public |
 | `/infinity/auth/login` | POST | public |
+| `/infinity/admin/me` | GET | JWT + admin |
+| `/infinity/admin/users` | GET | JWT + admin |
+| `/infinity/admin/statistics` | GET | JWT + admin |
 | `/infinity/players/me/enter-game` | POST | JWT |
 | `/infinity/players/:userId` | GET | public |
 | `/infinity/players/:playerId/position` | PATCH | public |
@@ -194,7 +198,7 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/planets/:planetId` | GET | public |
 | `/infinity/resources/planet/:planetId` | GET | public |
 
-See [documentation/infinity-api.md](documentation/infinity-api.md) for request/response shapes and Socket.IO events.
+See [documentation/infinity-api.md](documentation/infinity-api.md) for request/response shapes and Socket.IO events. Admin routes are documented in [documentation/admin-api.md](documentation/admin-api.md).
 
 ---
 

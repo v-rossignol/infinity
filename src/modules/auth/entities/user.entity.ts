@@ -5,6 +5,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { DEFAULT_USER_ROLE, UserRole } from '../constants/user-role';
 
 @Entity()
 export class User {
@@ -19,6 +20,9 @@ export class User {
 
   @Column({ default: '' })
   email: string;
+
+  @Column({ type: 'varchar', default: DEFAULT_USER_ROLE })
+  role: UserRole;
 
   @CreateDateColumn()
   createdAt: Date;

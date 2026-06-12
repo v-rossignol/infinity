@@ -1,7 +1,10 @@
-import { Body, Controller, Post, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Post, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
+import { AUTH_COOKIE_NAME, AUTH_COOKIE_PATH } from './constants/auth-cookie';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -24,5 +27,16 @@ export class AuthController {
       registerDto.email,
     );
     return this.authService.login(user);
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie(AUTH_COOKIE_NAME, {
+      httpOnly: true,
+      path: AUTH_COOKIE_PATH,
+      sameSite: 'lax',
+    });
+    return { success: true };
   }
 }

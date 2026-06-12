@@ -1186,6 +1186,7 @@ sequenceDiagram
 | `documentation/stellar-system/README.md` | Stellar system feature — implementation status |
 | `documentation/first-planet/first-planet-specifications.md` | First spawn orchestration rules and selection algorithms |
 | `documentation/first-planet/development-plan.md` | First-planet implementation phases |
+| `documentation/admin-api.md` | Admin REST API — `/infinity/admin/*` routes (JWT + admin role) |
 | `documentation/stellar-gate-api.md` | Target auth contract for the StellarGate client (cookie-based JWT, `/infinity` prefix) |
 | `documentation/galaxy/README.md` | Galaxy documentation index (design, naming, phase specs) |
 | `documentation/specifications/galaxy-phase-4-api-design.md` | Phase 4 cube/star REST implementation spec |

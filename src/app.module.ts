@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MongooseModule } from '@nestjs/mongoose';
 import { RedisModule } from './modules/redis/redis.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PlayersModule } from './modules/players/players.module';
 import { GalaxyModule } from './modules/galaxy/galaxy.module';
@@ -31,6 +32,7 @@ import { RequestLoggerMiddleware } from './shared/logger';
     }),
     RedisModule,
     AuthModule,
+    AdminModule,
     PlayersModule,
     GalaxyModule,
     PlanetsModule,

@@ -1,0 +1,74 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { AdminGuard } from '../auth/guards/admin.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AdminController } from './admin.controller';
+import { AdminService } from './admin.service';
+
+describe('AdminController', () => {
+  let controller: AdminController;
+
+  const adminUser = {
+    id: 'admin-id',
+    username: 'admin',
+    email: 'admin@example.com',
+    role: 'admin' as const,
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  };
+
+  const mockAdminService = {
+    getUserById: jest.fn(),
+    listUsers: jest.fn(),
+    getStatistics: jest.fn(),
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      controllers: [AdminController],
+      providers: [{ provide: AdminService, useValue: mockAdminService }],
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(AdminGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
+
+    controller = module.get(AdminController);
+  });
+
+  it('returns the current admin profile', async () => {
+    mockAdminService.getUserById.mockResolvedValue(adminUser);
+
+    const result = await controller.getMe({
+      user: { id: adminUser.id, username: adminUser.username, role: 'admin' },
+    } as never);
+
+    expect(mockAdminService.getUserById).toHaveBeenCalledWith(adminUser.id);
+    expect(result).toEqual(adminUser);
+  });
+
+  it('lists users', async () => {
+    mockAdminService.listUsers.mockResolvedValue([adminUser]);
+
+    const result = await controller.listUsers();
+
+    expect(mockAdminService.listUsers).toHaveBeenCalled();
+    expect(result).toEqual([adminUser]);
+  });
+
+  it('returns admin statistics', async () => {
+    const statistics = {
+      users: 3,
+      cubes: 12,
+      starSystems: 8,
+      planets: 24,
+    };
+    mockAdminService.getStatistics.mockResolvedValue(statistics);
+
+    const result = await controller.getStatistics();
+
+    expect(mockAdminService.getStatistics).toHaveBeenCalled();
+    expect(result).toEqual(statistics);
+  });
+});
