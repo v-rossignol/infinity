@@ -1,6 +1,6 @@
 ---
-description: Infinity Server documentation standards (rules/documents.md)
+description: Infinity documentation standards (rules/documents.md)
 alwaysApply: true
 ---
 
-@file ../../rules/documents.md
+@file ../../../rules/documents.md

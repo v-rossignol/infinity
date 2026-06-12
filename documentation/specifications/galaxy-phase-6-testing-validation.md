@@ -28,7 +28,7 @@ Phase 6 adds **e2e tests** for the cube galaxy (REST + Socket.IO + auth). Unit t
 **Prerequisites for e2e:**
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f deployment/dev/docker/docker-compose.yml up -d
 npm run test:e2e:docker
 ```
 

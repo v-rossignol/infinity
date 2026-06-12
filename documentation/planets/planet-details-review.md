@@ -113,4 +113,4 @@ Update when the hex model is implemented (response shape, gas rejection, `PLANET
 - [star-system.md](../objects/star-system.md) — planet summaries
 - [infinity-api.md](../infinity-api.md) — live API reference
 - [development-plan.md](../stellar-system/development-plan.md) — implementation roadmap
-- [documents.md](../../rules/documents.md) — documentation conventions
+- [documents.md](../../../rules/documents.md) — documentation conventions

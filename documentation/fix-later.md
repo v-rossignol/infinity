@@ -33,7 +33,7 @@ Tracked issues that are **accepted for MVP** or **out of scope for the current t
 | Implement `POST /infinity/auth/logout` (clear cookie) | `auth` |
 | Extend `JwtStrategy` to extract JWT from `infinity_token` cookie (keep Bearer for API tests) | `auth` |
 | `409` on duplicate username | `auth` |
-| `app.setGlobalPrefix('infinity')` if not already applied | `main.ts` |
+| ~~`app.setGlobalPrefix('infinity')` if not already applied~~ | ~~`main.ts`~~ *(done)* |
 | StellarGate client: `enter-game` after login with same-origin cookie | client |
 
 Spawn (`PlayerSpawnService`, `enter-game`) needs **no auth code** — only `JwtAuthGuard` resolving `userId` from header or cookie once the strategy is extended.

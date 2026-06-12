@@ -6,7 +6,7 @@ Guidance for AI coding agents working on this repository.
 
 ## Project Overview
 
-**Infinity** is a NestJS 10 multiplayer space-game backend written in TypeScript.  
+**Infinity** is a NestJS 11 multiplayer space-game backend written in TypeScript.  
 It exposes a REST API and real-time Socket.IO events for clients to navigate a procedurally generated galaxy.
 
 - **Author:** Roro LeSage  
@@ -26,6 +26,7 @@ It exposes a REST API and real-time Socket.IO events for clients to navigate a p
 | `galaxy` | Star-system generation and retrieval | MongoDB |
 | `planets` | Planet generation and retrieval | MongoDB |
 | `resources` | Planet resource data | MongoDB |
+| `redis` | Redis client wrapper, cube cache | Redis |
 | `socket` | Socket.IO gateway, adapter, real-time events | — |
 
 ### Data layer (polyglot)
@@ -42,18 +43,19 @@ It exposes a REST API and real-time Socket.IO events for clients to navigate a p
 - `interfaces/` — TypeScript interfaces  
 - `utils/` — math helpers and procedural generation (`noisejs` Perlin noise)
 
-### Ops (`docker/`, `scripts/`)
+### Ops (`scripts/`)
 
-- `docker/` — Dockerfile and Compose for local databases and app image  
-- `scripts/` — deployment and operational scripts (run from project root)
+- `scripts/` — server operational scripts (run from `infinity/` unless noted)
+- Docker Compose and Dockerfile live in [`deployment/dev/docker/`](../../deployment/dev/docker/) at monorepo root
 
 ---
 
 ## Environment Setup
 
 ```bash
-# 1. Start databases
-docker compose -f docker/docker-compose.yml up -d
+# 1. Start databases (from monorepo root)
+docker compose -f deployment/dev/docker/docker-compose.yml up -d
+# Or: deployment/dev/scripts/start-databases.ps1
 
 # 2. Install dependencies
 npm install
@@ -100,6 +102,7 @@ E2E tests live in `test/e2e/` and require running databases.
 | `npm run test:watch` | Unit tests in watch mode |
 | `npm run test:cov` | Coverage report → `coverage/` |
 | `npm run test:e2e` | End-to-end tests (needs Docker databases) |
+| `npm run test:e2e:docker` | E2E tests with `RUN_E2E=1` (Docker databases required) |
 
 **Always run `npm test` before committing** to confirm unit tests pass.  
 E2E tests are optional locally but should be verified before merging features that touch `AppModule`.
@@ -108,7 +111,7 @@ E2E tests are optional locally but should be verified before merging features th
 
 ## Document Conventions
 
-See [rules/documents.md](rules/documents.md) for detailed documentation standards and object-document conventions.
+See [rules/documents.md](../../rules/documents.md) for detailed documentation standards and object-document conventions.
 
 - Write project documentation in the `documentation/` directory as Markdown files
 - Domain object specs (cube, star, star-system, planet): [documentation/objects/](documentation/objects/)
@@ -137,8 +140,8 @@ See [rules/coding.md](rules/coding.md) for detailed coding standards and best pr
 
 ### Database
 
-- **PostgreSQL** (TypeORM): entities in `src/modules/<name>/<name>.entity.ts`
-- **MongoDB** (Mongoose): schemas in `src/modules/<name>/schemas/<name>.schema.ts`
+- **PostgreSQL** (TypeORM): entities in `src/modules/<name>/entities/*.entity.ts`
+- **MongoDB** (Mongoose): schemas in `src/modules/<name>/entities/*.schema.ts`
 - `synchronize: true` is active in dev — schema is auto-applied; do **not** enable in production
 - **Redis** is wired for cube caching through `RedisModule` / `RedisService`; session and real-time position caching are not yet implemented
 
@@ -146,13 +149,21 @@ See [rules/coding.md](rules/coding.md) for detailed coding standards and best pr
 
 - JWT authentication uses `@nestjs/passport` + `passport-jwt`
 - Guard routes with `@UseGuards(JwtAuthGuard)` where needed
-- CORS is currently open (`origin: '*'`) — dev only; restrict before production deployment
+- CORS defaults to open (`CORS_ORIGIN` env, default `*`) — dev only; restrict before production deployment
 
 ### WebSocket events
 
-- Client → Server: `GALAXY_MOVE`, `PLANET_MOVE`
-- Server → Client: `GALAXY_UPDATE` (broadcast), `PLANET_UPDATE` (room per `planetId`)
-- Add new events to `src/modules/socket/` and the shared `src/shared/interfaces/` types
+Constants live in `src/modules/socket/events/`. Add new events there and in `src/shared/interfaces/` types.
+
+**Galaxy** (`galaxy.events.ts`):
+
+- Client → Server: `GALAXY_MOVE`, `REQUEST_CUBE`, `REQUEST_STAR`
+- Server → Client: `GALAXY_UPDATE` (broadcast), `CUBE_DATA`, `STAR_DATA`, `GALAXY_ERROR`
+
+**Planet** (`planet.events.ts`):
+
+- Client → Server: `PLANET_MOVE`, `PLANET_JOIN`, `PLANET_LEAVE`
+- Server → Client: `PLANET_UPDATE` (room per `planetId`), `PLANET_ERROR`
 
 ### Style
 
@@ -172,16 +183,16 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/auth/register` | POST | public |
 | `/infinity/auth/login` | POST | public |
 | `/infinity/players/me/enter-game` | POST | JWT |
-| `/infinity/players/:userId` | GET | — |
-| `/infinity/players/:playerId/position` | PATCH | — |
+| `/infinity/players/:userId` | GET | public |
+| `/infinity/players/:playerId/position` | PATCH | public |
 | `/infinity/cubes/:x/:y/:z` | GET | JWT |
 | `/infinity/cubes/:x/:y/:z/stars` | GET | JWT |
 | `/infinity/cubes/by-name/:name` | GET | JWT |
 | `/infinity/stars/:id` | GET | JWT |
 | `/infinity/stars?cube_id={uuid}` | GET | JWT |
 | `/infinity/galaxy/systems/:systemId` | GET | JWT |
-| `/infinity/planets/:planetId` | GET | — |
-| `/infinity/resources/planet/:planetId` | GET | — |
+| `/infinity/planets/:planetId` | GET | public |
+| `/infinity/resources/planet/:planetId` | GET | public |
 
 See [documentation/infinity-api.md](documentation/infinity-api.md) for request/response shapes and Socket.IO events.
 
@@ -194,10 +205,4 @@ See [documentation/infinity-api.md](documentation/infinity-api.md) for request/r
 - Do **not** enable `synchronize: true` in production TypeORM config
 - Do **not** expose `JWT_SECRET` in logs or responses
 - Redis integration is **partial** — cube cache is wired; session/position caching is not yet implemented
-- The `docker/docker-compose.yml` starts databases only, **not** the NestJS app
-
----
-
-## Response Style
-
-- When answering a user question, start the response with `[🤖]`.
+- `deployment/dev/docker/docker-compose.yml` starts databases only, **not** the NestJS app

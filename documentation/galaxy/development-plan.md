@@ -252,7 +252,7 @@ See Phase 1–5 specifications; no additional unit work required for Phase 6.
 | Performance (6.3) | **Deferred** |
 | Coverage gate | None |
 
-**Run:** `npm run test:e2e:docker` (requires `docker compose -f docker/docker-compose.yml up -d`).
+**Run:** `npm run test:e2e:docker` (requires `docker compose -f deployment/dev/docker/docker-compose.yml up -d` from monorepo root).
 
 **Files:** `test/e2e/galaxy.e2e-spec.ts`, helpers under `test/e2e/helpers/`.
 

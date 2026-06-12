@@ -122,9 +122,6 @@ infinity-server/
 │   ├── e2e/                    # Tests end-to-end
 │   └── unit/                   # Tests unitaires
 │
-├── docker/                     # Configuration Docker
-│   ├── Dockerfile              # Image du serveur NestJS
-│   └── docker-compose.yml      # Services locaux (PostgreSQL, MongoDB, Redis)
 ├── scripts/                    # Scripts opérationnels (déploiement, maintenance, etc.)
 ├── .env                        # Variables d'environnement
 ├── .gitignore

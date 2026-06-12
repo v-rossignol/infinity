@@ -16,7 +16,7 @@ Serveur NestJS pour le jeu **Infinity** — gestion des joueurs, synchronisation
 ### 1. Services de base de données (Docker)
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d
+docker compose -f deployment/dev/docker/docker-compose.yml up -d
 ```
 
 ### 2. Installation et lancement
@@ -54,5 +54,5 @@ Le serveur écoute sur [http://localhost:4000](http://localhost:4000).
 
 Voir `documentation/server-setup.md` pour l'architecture détaillée des modules (`auth`, `players`, `galaxy`, `planets`, `resources`, `socket`).
 
-- `docker/` — configuration Docker (image serveur, bases de données locales)
+- `deployment/dev/docker/` — configuration Docker (image serveur, bases de données locales)
 - `scripts/` — scripts opérationnels (déploiement, maintenance)

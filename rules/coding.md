@@ -48,7 +48,7 @@ This document defines coding rules for the **Infinity Server** codebase. The rep
 - Keep domain features under `src/modules/<domain>/`.
 - Keep shared constants, interfaces, and utilities under `src/shared/`.
 - Keep application configuration under `src/config/`.
-- Keep operational scripts under `scripts/` and Docker files under `docker/`.
+- Keep server operational scripts under `scripts/`. Docker files live in `deployment/dev/docker/` at monorepo root.
 
 ### 2.2 Naming
 
@@ -223,7 +223,7 @@ This document defines coding rules for the **Infinity Server** codebase. The rep
 ## 10. Documentation
 
 - Write project documentation in `documentation/`.
-- Follow the documentation conventions in `rules/documents.md`.
+- Follow the documentation conventions in [`rules/documents.md`](../../rules/documents.md).
 - Keep API documentation aligned with implemented routes and Socket.IO events.
 - Do not claim Swagger/OpenAPI support unless it is added to the project.
 

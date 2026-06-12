@@ -151,11 +151,11 @@ Infinity VM setup complete.
 Next steps:
   1. Copy or clone the project onto this VM.
   2. Create a .env file from .env.example with production values.
-  3. Start databases:
-       docker compose -f docker/docker-compose.yml up -d
-  4. Build and run the app image:
-       docker build -f docker/Dockerfile -t infinity-server .
-       docker run -d --name infinity-server --env-file .env -p 4000:4000 infinity-server
+  3. Start databases (from monorepo root):
+       docker compose -f deployment/dev/docker/docker-compose.yml up -d
+  4. Build and run the app image (from monorepo root):
+       docker build -f deployment/dev/docker/Dockerfile -t infinity-server infinity/
+       docker run -d --name infinity-server --env-file infinity/.env -p 4000:4000 infinity-server
 
 EOF
 
