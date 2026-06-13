@@ -357,7 +357,7 @@ Idempotent: returns the same spawn context for an already-spawned player without
 2. `POST /infinity/players/me/enter-game` (Bearer) → render planet from response
 3. Socket.IO `PLANET_JOIN` with `planetId` → restores `surfacePosition` from Redis
 
-> **Cookie auth:** StellarGate targets `httpOnly` cookie `infinity_token` instead of Bearer tokens — see [stellar-gate-api.md](./stellar-gate-api.md) and [fix-later.md](./fix-later.md) §1. Until cookie extraction is implemented, use Bearer JWT in development.
+> **Cookie auth:** StellarGate targets `httpOnly` cookie `infinity_token` instead of Bearer tokens — see [stellar-gate-api.md](./stellar-gate-api.md) and [TO-BE-FIXED.md](./TO-BE-FIXED.md) §1. Until cookie extraction is implemented, use Bearer JWT in development.
 
 ---
 

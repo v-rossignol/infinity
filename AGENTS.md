@@ -2,6 +2,8 @@
 
 Guidance for AI coding agents working on this repository.
 
+**Monorepo context:** [../AGENTS.md](../AGENTS.md) · **Known gaps:** [../documentation/TO-BE-FIXED.md](../documentation/TO-BE-FIXED.md) · **Server deferred work:** [documentation/TO-BE-FIXED.md](documentation/TO-BE-FIXED.md)
+
 ---
 
 ## Project Overview
@@ -117,6 +119,7 @@ See [rules/documents.md](../../rules/documents.md) for detailed documentation st
 - Write project documentation in the `documentation/` directory as Markdown files
 - Domain object specs (cube, star, star-system, planet): [documentation/objects/](documentation/objects/)
 - Deprecated or superseded documents: [documentation/archive/](documentation/archive/)
+- Deferred server issues: [documentation/TO-BE-FIXED.md](documentation/TO-BE-FIXED.md)
 - Add metadata in a YAML block after the title
 - Include date, author, model name, model version, and sources when applicable
 

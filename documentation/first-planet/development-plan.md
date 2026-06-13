@@ -6,7 +6,7 @@ author: Roro LeSage
 model: Composer
 sources:
   - documentation/first-planet/first-planet-specifications.md
-  - documentation/fix-later.md
+  - documentation/TO-BE-FIXED.md
   - src/shared/utils/spawn-selection.ts
   - src/shared/utils/spawn-cube-selection.ts
   - src/modules/players/player-spawn.service.ts
@@ -25,7 +25,7 @@ sources:
 
 This plan tracks delivery of **first-planet spawn**: when a player enters the game from **StellarGate** for the first time, the server allocates a new adjacent cube, picks a star and rocky planet, materializes the planet surface, and returns a ready-to-play state via **`POST /infinity/players/me/enter-game`**.
 
-Domain rules and selection algorithms are defined in [first-planet-specifications.md](./first-planet-specifications.md). Deferred work (StellarGate cookie auth, partial-failure resume) is tracked in [fix-later.md](../fix-later.md).
+Domain rules and selection algorithms are defined in [first-planet-specifications.md](./first-planet-specifications.md). Deferred work (StellarGate cookie auth, partial-failure resume) is tracked in [TO-BE-FIXED.md](../TO-BE-FIXED.md).
 
 **Status:** specification complete — **implementation not started**.
 
@@ -45,7 +45,7 @@ Domain rules and selection algorithms are defined in [first-planet-specification
 | Surface position | `PlanetsService.joinPlanet(playerId, planetId)` — random `(q, r)` in Redis |
 | Player persistence | Global star coords (`localToGlobal`), `currentPlanetId`, `planetX`/`planetY` ← `q`/`r`; **write last** |
 | Retries | Caps in `spawn.constants.ts` — see spec §1.5; `503` after `SPAWN_FULL_ATTEMPTS` |
-| Auth (MVP) | Bearer JWT via `JwtAuthGuard`; cookie `infinity_token` deferred — [fix-later.md](../fix-later.md) §1 |
+| Auth (MVP) | Bearer JWT via `JwtAuthGuard`; cookie `infinity_token` deferred — [TO-BE-FIXED.md](../TO-BE-FIXED.md) §1 |
 | Client flow | Auth → `enter-game` → render response → `PLANET_JOIN` restores Redis position |
 
 ---
@@ -66,7 +66,7 @@ Domain rules and selection algorithms are defined in [first-planet-specification
 | Enter-game endpoint | **Done** — `POST /infinity/players/me/enter-game` (JWT) | `players.controller.ts` |
 | Module wiring | **Done** — `PlayersModule` imports `GalaxyModule`, `PlanetsModule` | `players.module.ts` |
 | API docs | **Done** — `infinity-api.md` `POST /players/me/enter-game` | — |
-| StellarGate cookie auth | **Deferred** — [fix-later.md](../fix-later.md) §1 | `auth` module |
+| StellarGate cookie auth | **Deferred** — [TO-BE-FIXED.md](../TO-BE-FIXED.md) §1 | `auth` module |
 
 ### Flow (target)
 
@@ -139,14 +139,14 @@ Phases **0–6** complete.
 | Cube + star generation | [galaxy/development-plan.md](../galaxy/development-plan.md) | Phase 2–3 complete |
 | Star system | [stellar-system/development-plan.md](../stellar-system/development-plan.md) | Get-or-create on star id |
 | Planet surface | [planets/development-plan.md](../planets/development-plan.md) | Phases 0–7 complete |
-| StellarGate cookie auth | [fix-later.md](../fix-later.md) §1 | Parallel — not blocking spawn code or Bearer tests |
+| StellarGate cookie auth | [TO-BE-FIXED.md](../TO-BE-FIXED.md) §1 | Parallel — not blocking spawn code or Bearer tests |
 
 ---
 
 ## Out of scope (for now)
 
-- StellarGate cookie auth and `GET /auth/me` — [fix-later.md](../fix-later.md) §1
-- Resume in-progress spawn on partial failure — [fix-later.md](../fix-later.md) §2
+- StellarGate cookie auth and `GET /auth/me` — [TO-BE-FIXED.md](../TO-BE-FIXED.md) §1
+- Resume in-progress spawn on partial failure — [TO-BE-FIXED.md](../TO-BE-FIXED.md) §2
 - Renaming `Player.planetX` / `planetY` to `planetQ` / `planetR`
 - Spawning on `ice` or `lava` planets
 - Socket changes — reuse existing `PLANET_JOIN` after REST spawn
@@ -159,7 +159,7 @@ Phases **0–6** complete.
 | Document | Relevance |
 |----------|-----------|
 | [first-planet-specifications.md](./first-planet-specifications.md) | Full spawn specification |
-| [fix-later.md](../fix-later.md) | Deferred auth and partial-failure items |
+| [TO-BE-FIXED.md](../TO-BE-FIXED.md) | Deferred auth and partial-failure items |
 | [stellar-gate-api.md](../stellar-gate-api.md) | Client auth contract |
 | [infinity-api.md](../infinity-api.md) | HTTP surface to update in phase 5 |
 | [planets/development-plan.md](../planets/development-plan.md) | Planet first-entry and socket rules |

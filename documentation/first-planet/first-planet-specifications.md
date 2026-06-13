@@ -139,7 +139,7 @@ Track everything required before implementing spawn. Items marked **decided** ar
 | 8 | [Bootstrap (empty galaxy)](#14-bootstrap-no-cubes-yet) | **Decided** | Seed cube at `(0, 0, 0)` (stars OK); players never spawn there — adjacent cubes only |
 | 9 | [Retry and fallback](#15-retry-and-fallback) | **Decided** | Caps and fallback order in §1.5 |
 | 10 | [Partial-failure retry](#partial-failure-on-enter-game) | **Decided** | MVP: acceptable; minimize via write order |
-| 11 | [StellarGate auth vs spawn](#stellargate-auth-vs-spawn-logic) | **Deferred** | Tracked in [fix-later.md](../fix-later.md) §1 |
+| 11 | [StellarGate auth vs spawn](#stellargate-auth-vs-spawn-logic) | **Deferred** | Tracked in [TO-BE-FIXED.md](../TO-BE-FIXED.md) §1 |
 
 ---
 
@@ -526,13 +526,13 @@ Mitigation at implementation (no schema change required):
 2. **Persist `Player` position last** — `currentPlanetId`, galaxy coords, `planetX`/`planetY` in a single `updatePosition` call.
 3. If step 2 fails, orphaned MongoDB/Redis data may exist; a retry spawns elsewhere. Orphans are harmless (extra cubes/planets in the galaxy).
 
-**Post-MVP** (optional): add `spawnPending` or `spawnOrigin` fields on `Player` to resume an in-progress allocation instead of re-rolling. Tracked in [fix-later.md](../fix-later.md) §2.
+**Post-MVP** (optional): add `spawnPending` or `spawnOrigin` fields on `Player` to resume an in-progress allocation instead of re-rolling. Tracked in [TO-BE-FIXED.md](../TO-BE-FIXED.md) §2.
 
 ---
 
 ## StellarGate auth vs spawn logic
 
-> **Deferred:** full alignment with StellarGate is tracked in [fix-later.md](../fix-later.md) §1. Spawn can ship first with Bearer JWT in tests.
+> **Deferred:** full alignment with StellarGate is tracked in [TO-BE-FIXED.md](../TO-BE-FIXED.md) §1. Spawn can ship first with Bearer JWT in tests.
 
 These are **two separate features** that meet at one HTTP call. Spawn logic does not depend on *how* the JWT is delivered — only on *who* the authenticated user is.
 
@@ -635,7 +635,7 @@ Steps 1 and 2–3 can proceed **in parallel** by different contributors.
 |----------|-----------|
 | [development-plan.md](./development-plan.md) | Phased implementation tracker |
 | [stellar-gate-api.md](../stellar-gate-api.md) | Cookie auth workstream (parallel to spawn); see [§ StellarGate auth vs spawn](#stellargate-auth-vs-spawn-logic) |
-| [fix-later.md](../fix-later.md) | Deferred issues (§1 StellarGate cookie auth, §2 partial-failure spawn resume) |
+| [TO-BE-FIXED.md](../TO-BE-FIXED.md) | Deferred issues (§1 StellarGate cookie auth, §2 partial-failure spawn resume) |
 | [infinity-api.md](../infinity-api.md) | Current player, cube, system, planet, and socket contracts |
 | [planets/development-plan.md](../planets/development-plan.md) | First planet entry via REST; `PLANET_JOIN` spawn rules |
 | [objects/planet.md](../objects/planet.md) | Planet document lifecycle |

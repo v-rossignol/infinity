@@ -1,4 +1,4 @@
-# Fix Later — Deferred Issues
+# TO-BE-FIXED — Deferred Issues
 
 ```yaml
 date: 2026-06-11
@@ -7,10 +7,13 @@ model: Composer
 sources:
   - documentation/first-planet/first-planet-specifications.md
   - documentation/stellar-gate-api.md
+  - ../../documentation/TO-BE-FIXED.md
   - src/modules/auth/
 ```
 
 Tracked issues that are **accepted for MVP** or **out of scope for the current task**, to be addressed in a later iteration. Add new entries at the bottom; do not remove resolved items — strike through or move to an archive section when done.
+
+**Cross-project deferred issues** (auth mismatch, missing clients, Caddy routes, and other monorepo-wide gaps) are tracked in the global [documentation/TO-BE-FIXED.md](../../documentation/TO-BE-FIXED.md). This file covers **server-only** items.
 
 ---
 
@@ -65,5 +68,6 @@ Spawn (`PlayerSpawnService`, `enter-game`) needs **no auth code** — only `JwtA
 
 | Document | Relevance |
 |----------|-----------|
+| [documentation/TO-BE-FIXED.md](../../documentation/TO-BE-FIXED.md) | Cross-project deferred issues (monorepo) |
 | [stellar-gate-api.md](./stellar-gate-api.md) | Target cookie auth contract |
 | [first-planet/first-planet-specifications.md](./first-planet/first-planet-specifications.md) | Spawn flow; auth vs spawn separation |
