@@ -205,7 +205,7 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/planets/:planetId` | GET | public |
 | `/infinity/resources/planet/:planetId` | GET | public |
 
-See [documentation/infinity-api.md](documentation/infinity-api.md) for narrative API details. REST OpenAPI: [auth-api.yaml](../contracts/auth-api.yaml), [admin-api.yaml](../contracts/admin-api.yaml), [game-api.yaml](../contracts/game-api.yaml). Socket.IO AsyncAPI: [asyncapi.yaml](../contracts/asyncapi.yaml). DTO JSON Schemas: [../contracts/schemas/](../contracts/schemas/). Admin routes are documented in [documentation/admin-api.md](documentation/admin-api.md).
+REST OpenAPI: [auth-api.yaml](../contracts/auth-api.yaml), [admin-api.yaml](../contracts/admin-api.yaml), [game-api.yaml](../contracts/game-api.yaml). Socket.IO AsyncAPI: [asyncapi.yaml](../contracts/asyncapi.yaml). DTO JSON Schemas: [../contracts/schemas/](../contracts/schemas/). **API source of truth:** [../contracts/](../contracts/).
 
 ---
 

@@ -130,7 +130,7 @@ This document defines coding rules for the **Infinity Server** codebase. The rep
 ### 5.1 REST API
 
 - All REST routes are served under the `/infinity` prefix.
-- Keep route names consistent with the existing API surface documented in `documentation/infinity-api.md`.
+- Keep route names consistent with the API contracts in [`../contracts/`](../contracts/) (OpenAPI and AsyncAPI).
 - Protect routes with `JwtAuthGuard` when authentication is required.
 - Return stable response shapes for existing public endpoints.
 

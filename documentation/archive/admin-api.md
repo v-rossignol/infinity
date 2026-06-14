@@ -1,10 +1,26 @@
 # Infinity Server — Admin API
 
+> **Deprecated.** This narrative API reference is archived and no longer maintained.
+>
+> **Source of truth:** [contracts/](../../../contracts/) — [admin-api.yaml](../../../contracts/admin-api.yaml), [auth-api.yaml](../../../contracts/auth-api.yaml), [openapi-shared.yaml](../../../contracts/openapi-shared.yaml), and [JSON Schemas](../../../contracts/schemas/).
+
 ```yaml
 date: 2026-06-12
 author: Roro LeSage
 model: Composer
 type: API Reference
+status: deprecated
+deprecated: 2026-06-14
+superseded-by:
+  - ../../../contracts/README.md
+  - ../../../contracts/admin-api.yaml
+  - ../../../contracts/auth-api.yaml
+  - ../../../contracts/openapi-shared.yaml
+  - ../../../contracts/schemas/
+modified:
+  - date: 2026-06-14
+    author: Composer
+    model: composer-2.5-fast
 sources:
   - src/modules/admin/
   - src/modules/auth/auth.service.ts
@@ -19,7 +35,7 @@ sources:
 
 Reference for **implemented** admin HTTP routes on the Infinity NestJS server. All routes under `/infinity/admin/*` require a valid JWT **and** the **admin** role.
 
-For general REST and WebSocket behavior, see [infinity-api.md](./infinity-api.md).
+**Do not update this file.** When code and documentation diverge, [contracts/](../../../contracts/) and implemented controllers in `src/modules/` are authoritative.
 
 ---
 
@@ -272,7 +288,8 @@ Authorization: Bearer <access_token>
 
 | Document | Description |
 |----------|-------------|
-| [infinity-api.md](./infinity-api.md) | General REST and WebSocket API reference |
+| [contracts/admin-api.yaml](../../../contracts/admin-api.yaml) | Admin REST API — source of truth for `/infinity/admin/*` |
+| [archive/infinity-api.md](./infinity-api.md) | Deprecated general REST and WebSocket narrative reference |
 | [server-setup.md](./server-setup.md) | Module architecture and deployment |
 | [AGENTS.md](../AGENTS.md) | Agent guide — env vars, modules, dev commands |
 | [objects/cube.md](./objects/cube.md) | Cube object — MongoDB `cubes` collection |

@@ -1,10 +1,27 @@
 # Infinity Server — REST & WebSocket API
 
+> **Deprecated.** This narrative API reference is archived and no longer maintained.
+>
+> **Source of truth:** [contracts/](../../../contracts/) — [OpenAPI REST](../../../contracts/auth-api.yaml) ([auth](../../../contracts/auth-api.yaml), [admin](../../../contracts/admin-api.yaml), [game](../../../contracts/game-api.yaml)), [AsyncAPI Socket.IO](../../../contracts/asyncapi.yaml), and [JSON Schemas](../../../contracts/schemas/).
+
 ```yaml
 date: 2026-06-11
 author: Roro LeSage
 model: Composer
 type: API Reference
+status: deprecated
+deprecated: 2026-06-14
+superseded-by:
+  - ../../../contracts/README.md
+  - ../../../contracts/auth-api.yaml
+  - ../../../contracts/admin-api.yaml
+  - ../../../contracts/game-api.yaml
+  - ../../../contracts/asyncapi.yaml
+  - ../../../contracts/schemas/
+modified:
+  - date: 2026-06-14
+    author: Composer
+    model: composer-2.5-fast
 sources:
   - src/modules/auth/
   - src/modules/players/
@@ -22,7 +39,7 @@ sources:
   - documentation/specifications/galaxy-phase-4-api-design.md
 ```
 
-Reference for **implemented** HTTP routes and Socket.IO events on the Infinity NestJS server. This document reflects the current codebase, not planned contracts (see `documentation/stellar-gate-api.md` for the StellarGate client auth target).
+Reference for **implemented** HTTP routes and Socket.IO events on the Infinity NestJS server. **Do not update this file.** When code and documentation diverge, [contracts/](../../../contracts/) and implemented controllers in `src/modules/` are authoritative.
 
 ---
 
@@ -75,7 +92,7 @@ CORS is enabled with `origin: '*'` and `credentials: true` (development only —
 | Protected routes | **Cube, star, star-system, auth session endpoints, and first spawn** require a valid JWT |
 | Public routes | Health, auth register/login/forgot-password, `GET /infinity/players/:userId`, planets, resources |
 
-See [auth.md](./auth.md) for how clients must handle sessions (cookie vs Bearer, lifecycle, pitfalls). Endpoint payloads: [infinity-api.md](./infinity-api.md) (Auth section) and [stellar-gate-api.md](./stellar-gate-api.md).
+See [auth.md](../auth.md) for how clients must handle sessions (cookie vs Bearer, lifecycle, pitfalls). Endpoint payloads: [contracts/auth-api.yaml](../../../contracts/auth-api.yaml) and [stellar-gate-api.md](../../../stellar-gate/documentation/infinity/stellar-gate-api.md).
 
 ---
 
