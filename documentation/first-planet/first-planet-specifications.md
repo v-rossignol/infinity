@@ -499,32 +499,34 @@ Retry when no rocky planet: another random star in the same cube, then new cube 
 
 ## Player position storage
 
-| Field | Store | Phase |
-|-------|-------|-------|
-| `galaxyX`, `galaxyY`, `galaxyZ` | PostgreSQL `Player` | Durable galaxy location (global star coordinates) |
-| `currentPlanetId` | PostgreSQL `Player` | Active planet |
-| `planetX`, `planetY` | PostgreSQL `Player` | Surface hex coords — maps to axial `q` / `r` for now |
-| `(q, r)` on planet | Redis | Real-time position; written by `joinPlanet` on spawn |
+> **Superseded (2026-06-13):** Persistence is defined in [wip/player-location/player-location.md](../wip/player-location/player-location.md). The first-planet spawn flow writes **planet-depth** `Player.location` (JSONB) — not flat columns.
 
-**Note:** The `Player` entity uses `planetX` / `planetY` while the hex surface model uses `(q, r)`. Until fields are renamed, map `q → planetX` and `r → planetY`.
+| Field | Store | Notes |
+|-------|-------|-------|
+| `location` | PostgreSQL `Player` JSONB | Full contextual object by view depth, or `null` for a **freshy** |
+| `location.planet.hex_coords` | Same JSONB | Surface `{ q, r }` — persisted on spawn and every `PLANET_MOVE` |
+| `location.cube.id` | Same JSONB | Always present when `location` is set |
+| `location.starSystem` | Same JSONB | ID-only at planet depth; `position` at system depth |
+
+**No Redis** for player position. Cube cache in Redis is unrelated.
 
 ---
 
 ## Idempotency
 
-- If `player.currentPlanetId` is already set, `enter-game` returns the existing spawn context without creating new world objects.
+- If `player.location` is already set, `enter-game` returns `{ player }` without creating new world objects.
 - Cube / star system / planet creation is already idempotent at the service layer (same id → same document).
-- Player idempotency (`currentPlanetId` already set) prevents duplicate spawns on network retry.
+- Player idempotency (`location != null`) prevents duplicate spawns on network retry.
 
 ### Partial failure on `enter-game`
 
-**Decided (MVP).** Cube selection is random. If the request fails **after** world objects are created but **before** `currentPlanetId` is persisted, a client retry may allocate a **different** cube/star/planet. That is **acceptable for MVP**.
+**Decided (MVP).** Cube selection is random. If the request fails **after** world objects are created but **before** `Player.location` is persisted, a client retry may allocate a **different** cube/star/planet. That is **acceptable for MVP**.
 
 Mitigation at implementation (no schema change required):
 
-1. Generate world objects (cube, star system, planet, Redis position).
-2. **Persist `Player` position last** — `currentPlanetId`, galaxy coords, `planetX`/`planetY` in a single `updatePosition` call.
-3. If step 2 fails, orphaned MongoDB/Redis data may exist; a retry spawns elsewhere. Orphans are harmless (extra cubes/planets in the galaxy).
+1. Generate world objects (cube, star system, planet).
+2. **Persist `Player.location` last** — planet-depth JSONB in a single write via `PlayerLocationService.setLocation`.
+3. If step 2 fails, orphaned MongoDB data may exist; a retry spawns elsewhere. Orphans are harmless (extra cubes/planets in the galaxy).
 
 **Post-MVP** (optional): add `spawnPending` or `spawnOrigin` fields on `Player` to resume an in-progress allocation instead of re-rolling. Tracked in [TO-BE-FIXED.md](../TO-BE-FIXED.md) §2.
 

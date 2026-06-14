@@ -15,11 +15,7 @@ const star = (id: string): StarData => ({
   properties: { type: 'yellow' },
 });
 
-const summary = (
-  id: string,
-  type: string,
-  radius: number,
-): PlanetSummary => ({
+const summary = (id: string, type: string, radius: number): PlanetSummary => ({
   id,
   name: id,
   x: 0,

@@ -1,9 +1,8 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PlayerSpawnService } from './player-spawn.service';
 import { PlayersService } from './players.service';
-import { UpdatePositionDto } from './dto/update-position.dto';
 
 type AuthenticatedRequest = Request & {
   user: { id: string; username: string };
@@ -17,6 +16,7 @@ export class PlayersController {
   ) {}
 
   @Post('me/enter-game')
+  @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   async enterGame(@Req() req: AuthenticatedRequest) {
     const userId = req.user.id;
@@ -34,13 +34,5 @@ export class PlayersController {
       player = await this.playersService.createForUser(userId);
     }
     return player;
-  }
-
-  @Patch(':playerId/position')
-  async updatePosition(
-    @Param('playerId') playerId: string,
-    @Body() updatePositionDto: UpdatePositionDto,
-  ) {
-    return this.playersService.updatePosition(playerId, updatePositionDto);
   }
 }

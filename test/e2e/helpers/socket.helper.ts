@@ -1,9 +1,10 @@
 import { io, Socket } from 'socket.io-client';
 
-export const connectSocket = (port: number): Promise<Socket> =>
+export const connectSocket = (port: number, token?: string): Promise<Socket> =>
   new Promise((resolve, reject) => {
     const socket = io(`http://127.0.0.1:${port}`, {
       transports: ['websocket'],
+      auth: token ? { token } : undefined,
     });
 
     const onError = (error: Error) => {

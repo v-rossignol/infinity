@@ -1,0 +1,233 @@
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import {
+  buildCubeLocation,
+  buildPlanetLocation,
+  buildStarSystemLocation,
+} from '../../shared/utils/player-location';
+import { Player } from './entities/player.entity';
+import { PlayerLocationService } from './player-location.service';
+
+describe('PlayerLocationService', () => {
+  const playerId = 'player-uuid';
+  const cubeId = 'cube-uuid';
+  const starSystemId = 'star-uuid';
+  const planetId = `${starSystemId}_planet_0`;
+
+  const cubeDepth = buildCubeLocation({
+    cubeId,
+    position: { x: 2.1, y: 3.4, z: 5.6 },
+  });
+
+  const starSystemDepth = buildStarSystemLocation({
+    cubeId,
+    starSystemId,
+    position: { x: 145.2, y: 34.8 },
+  });
+
+  const planetDepth = buildPlanetLocation({
+    cubeId,
+    starSystemId,
+    planetId,
+    hex_coords: { q: 4, r: 7 },
+  });
+
+  let service: PlayerLocationService;
+  let repository: { findOneBy: jest.Mock; save: jest.Mock };
+
+  const savePlayer = (location: Player['location']): Player =>
+    ({
+      id: playerId,
+      userId: 'user-uuid',
+      location,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }) as Player;
+
+  beforeEach(async () => {
+    repository = {
+      findOneBy: jest.fn(),
+      save: jest.fn(async (player) => player),
+    };
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        PlayerLocationService,
+        { provide: getRepositoryToken(Player), useValue: repository },
+      ],
+    }).compile();
+
+    service = module.get(PlayerLocationService);
+  });
+
+  it('getLocation returns null for a freshy', async () => {
+    repository.findOneBy.mockResolvedValue(savePlayer(null));
+
+    await expect(service.getLocation(playerId)).resolves.toBeNull();
+  });
+
+  it('setLocation persists a valid planet-depth location', async () => {
+    repository.findOneBy.mockResolvedValue(savePlayer(null));
+
+    const result = await service.setLocation(playerId, planetDepth);
+
+    expect(result.location).toEqual(planetDepth);
+    expect(repository.save).toHaveBeenCalled();
+  });
+
+  it('setLocation rejects invalid shapes with BadRequestException', async () => {
+    repository.findOneBy.mockResolvedValue(savePlayer(null));
+
+    await expect(
+      service.setLocation(playerId, {
+        cube: { id: cubeId, position: { x: 0, y: 0, z: 0 } },
+        planet: planetDepth.planet,
+      } as never),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('updatePlanetHex patches hex coordinates at planet depth', async () => {
+    repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
+
+    const result = await service.updatePlanetHex(playerId, { q: 9, r: 1 });
+
+    expect(result.location).toEqual(
+      buildPlanetLocation({
+        cubeId,
+        starSystemId,
+        planetId,
+        hex_coords: { q: 9, r: 1 },
+      }),
+    );
+  });
+
+  it('updatePlanetHex throws ConflictException when not at planet depth', async () => {
+    repository.findOneBy.mockResolvedValue(savePlayer(cubeDepth));
+
+    await expect(service.updatePlanetHex(playerId, { q: 0, r: 0 })).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+  });
+
+  it('updateCubePosition patches local cube coordinates', async () => {
+    repository.findOneBy.mockResolvedValue(savePlayer(cubeDepth));
+
+    const result = await service.updateCubePosition(playerId, { x: 1, y: 2, z: 3 });
+
+    expect(result.location).toEqual(
+      buildCubeLocation({ cubeId, position: { x: 1, y: 2, z: 3 } }),
+    );
+  });
+
+  it('updateStarSystemPosition patches system map coordinates', async () => {
+    repository.findOneBy.mockResolvedValue(savePlayer(starSystemDepth));
+
+    const result = await service.updateStarSystemPosition(playerId, { x: 10, y: 20 });
+
+    expect(result.location).toEqual(
+      buildStarSystemLocation({
+        cubeId,
+        starSystemId,
+        position: { x: 10, y: 20 },
+      }),
+    );
+  });
+
+  describe('transitionTo', () => {
+    it('enterStarSystem moves from cube to star system depth', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(cubeDepth));
+
+      const result = await service.transitionTo(playerId, {
+        type: 'enterStarSystem',
+        starSystemId,
+        position: { x: 50, y: 60 },
+      });
+
+      expect(result.location).toEqual(
+        buildStarSystemLocation({
+          cubeId,
+          starSystemId,
+          position: { x: 50, y: 60 },
+        }),
+      );
+      expect(result.location).not.toHaveProperty('planet');
+      if (result.location) {
+        expect(result.location.cube).toEqual({ id: cubeId });
+      }
+    });
+
+    it('enterPlanet moves from star system to planet depth', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(starSystemDepth));
+
+      const result = await service.transitionTo(playerId, {
+        type: 'enterPlanet',
+        planetId,
+        hex_coords: { q: 2, r: 3 },
+      });
+
+      expect(result.location).toEqual(
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId,
+          hex_coords: { q: 2, r: 3 },
+        }),
+      );
+      if (result.location && 'planet' in result.location) {
+        expect(result.location.starSystem).toEqual({ id: starSystemId });
+        expect(result.location.planet.id).toBe(planetId);
+      }
+    });
+
+    it('leavePlanet moves from planet to star system depth', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
+
+      const result = await service.transitionTo(playerId, {
+        type: 'leavePlanet',
+        position: { x: 80, y: 90 },
+      });
+
+      expect(result.location).toEqual(
+        buildStarSystemLocation({
+          cubeId,
+          starSystemId,
+          position: { x: 80, y: 90 },
+        }),
+      );
+      expect(result.location).not.toHaveProperty('planet');
+    });
+
+    it('leaveStarSystem moves from star system to cube depth', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(starSystemDepth));
+
+      const result = await service.transitionTo(playerId, {
+        type: 'leaveStarSystem',
+        position: { x: 4, y: 5, z: 6 },
+      });
+
+      expect(result.location).toEqual(
+        buildCubeLocation({ cubeId, position: { x: 4, y: 5, z: 6 } }),
+      );
+      expect(result.location).not.toHaveProperty('starSystem');
+    });
+
+    it('rejects enterStarSystem when not at cube depth', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
+
+      await expect(
+        service.transitionTo(playerId, {
+          type: 'enterStarSystem',
+          starSystemId,
+          position: { x: 0, y: 0 },
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  it('throws NotFoundException when player is missing', async () => {
+    repository.findOneBy.mockResolvedValue(null);
+
+    await expect(service.getLocation(playerId)).rejects.toBeInstanceOf(NotFoundException);
+  });
+});

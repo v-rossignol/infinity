@@ -1,9 +1,10 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { AuthUser, toAuthUser } from './dto/auth-user.dto';
 import { DEFAULT_USER_ROLE, UserRole } from './constants/user-role';
 import { User } from './entities/user.entity';
 
@@ -12,6 +13,11 @@ interface CreateUserOptions {
   password: string;
   email?: string;
   role?: UserRole;
+}
+
+export interface AuthSession {
+  user: AuthUser;
+  token: string;
 }
 
 @Injectable()
@@ -37,14 +43,23 @@ export class AuthService implements OnModuleInit {
     return null;
   }
 
-  async login(user: User) {
+  signSession(user: User): AuthSession {
     const payload = { username: user.username, sub: user.id, role: user.role };
     return {
-      access_token: this.jwtService.sign(payload),
+      user: toAuthUser(user),
+      token: this.jwtService.sign(payload),
     };
   }
 
-  async register(username: string, password: string, email?: string) {
+  async findById(id: string): Promise<User | null> {
+    return this.usersRepository.findOneBy({ id });
+  }
+
+  async register(username: string, password: string, email?: string): Promise<User> {
+    const existingUser = await this.usersRepository.findOneBy({ username });
+    if (existingUser) {
+      throw new ConflictException('Username already taken');
+    }
     return this.createUser({ username, password, email });
   }
 

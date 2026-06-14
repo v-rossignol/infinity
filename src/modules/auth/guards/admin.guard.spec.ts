@@ -4,7 +4,11 @@ import { AdminGuard } from './admin.guard';
 describe('AdminGuard', () => {
   const guard = new AdminGuard();
 
-  const createContext = (user?: { id: string; username: string; role?: string }): ExecutionContext =>
+  const createContext = (user?: {
+    id: string;
+    username: string;
+    role?: string;
+  }): ExecutionContext =>
     ({
       switchToHttp: () => ({
         getRequest: () => ({ user }),
@@ -13,9 +17,7 @@ describe('AdminGuard', () => {
 
   it('allows admin users', () => {
     expect(
-      guard.canActivate(
-        createContext({ id: 'user-id', username: 'admin', role: 'admin' }),
-      ),
+      guard.canActivate(createContext({ id: 'user-id', username: 'admin', role: 'admin' })),
     ).toBe(true);
   });
 
@@ -26,8 +28,8 @@ describe('AdminGuard', () => {
   });
 
   it('denies requests without a role', () => {
-    expect(() =>
-      guard.canActivate(createContext({ id: 'user-id', username: 'pilot' })),
-    ).toThrow(ForbiddenException);
+    expect(() => guard.canActivate(createContext({ id: 'user-id', username: 'pilot' }))).toThrow(
+      ForbiddenException,
+    );
   });
 });

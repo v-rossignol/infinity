@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -7,12 +8,16 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
-  getPlanetPositionRedisKey,
-  PLANET_CONSTANTS,
-} from '../../shared/constants/planet.constants';
-import { PlanetHexPosition, PlanetMovePayload } from '../../shared/interfaces/planet-position.interface';
+  PlanetHexPosition,
+  PlanetMovePayload,
+} from '../../shared/interfaces/planet-position.interface';
+import {
+  buildPlanetLocation,
+  isPlayerLocationOnPlanet,
+} from '../../shared/utils/player-location';
 import { generatePlanetSurface } from '../../shared/utils/planet-surface-generation';
-import { RedisService } from '../redis/redis.service';
+import { StarService } from '../galaxy/star.service';
+import { PlayerLocationService } from '../players/player-location.service';
 import { StarSystemService } from '../galaxy/star-system.service';
 import { Planet } from './entities/planet.schema';
 
@@ -22,7 +27,8 @@ export class PlanetsService {
     @InjectModel(Planet.name)
     private planetModel: Model<Planet>,
     private readonly starSystemService: StarSystemService,
-    private readonly redisService: RedisService,
+    private readonly starService: StarService,
+    private readonly playerLocationService: PlayerLocationService,
   ) {}
 
   async getPlanet(planetId: string, starSystemId?: string) {
@@ -35,11 +41,6 @@ export class PlanetsService {
   }
 
   async joinPlanet(playerId: string, planetId: string) {
-    const cached = await this.getCachedPosition(planetId, playerId);
-    if (cached) {
-      return { planetId, ...cached };
-    }
-
     const planet = await this.planetModel.findById(planetId).exec();
     if (!planet) {
       throw new NotFoundException(
@@ -47,15 +48,61 @@ export class PlanetsService {
       );
     }
 
+    const location = await this.playerLocationService.getLocation(playerId);
+    if (location && isPlayerLocationOnPlanet(location)) {
+      if (location.planet.id !== planetId) {
+        throw new ConflictException('Player is on a different planet');
+      }
+
+      return {
+        planetId,
+        q: location.planet.hex_coords.q,
+        r: location.planet.hex_coords.r,
+      };
+    }
+
+    const star = await this.starService.findById(planet.starSystemId);
+    if (!star) {
+      throw new NotFoundException(`Star "${planet.starSystemId}" not found for planet join`);
+    }
+
     const position = this.rollRandomPosition(planet.radius);
-    await this.savePosition(planetId, playerId, position);
+    await this.playerLocationService.setLocation(
+      playerId,
+      buildPlanetLocation({
+        cubeId: star.cube_id,
+        starSystemId: planet.starSystemId,
+        planetId,
+        hex_coords: position,
+      }),
+    );
+
     return { planetId, ...position };
   }
 
   async handlePlayerMove(playerId: string, payload: PlanetMovePayload) {
-    const position = { q: payload.q, r: payload.r };
-    await this.savePosition(payload.planetId, playerId, position);
-    return { planetId: payload.planetId, ...position };
+    const location = await this.playerLocationService.getLocation(playerId);
+    if (!location || !isPlayerLocationOnPlanet(location)) {
+      throw new ConflictException('Player is not at planet depth');
+    }
+
+    if (location.planet.id !== payload.planetId) {
+      throw new ConflictException('Player is not on this planet');
+    }
+
+    await this.playerLocationService.updatePlanetHex(playerId, {
+      q: payload.q,
+      r: payload.r,
+    });
+
+    return { planetId: payload.planetId, q: payload.q, r: payload.r };
+  }
+
+  rollRandomPosition(radius: number): PlanetHexPosition {
+    return {
+      q: Math.floor(Math.random() * radius),
+      r: Math.floor(Math.random() * radius),
+    };
   }
 
   private async createPlanetFromSummary(planetId: string, starSystemId?: string) {
@@ -87,36 +134,5 @@ export class PlanetsService {
     });
 
     return planet.save();
-  }
-
-  private rollRandomPosition(radius: number): PlanetHexPosition {
-    return {
-      q: Math.floor(Math.random() * radius),
-      r: Math.floor(Math.random() * radius),
-    };
-  }
-
-  private async getCachedPosition(
-    planetId: string,
-    playerId: string,
-  ): Promise<PlanetHexPosition | null> {
-    const raw = await this.redisService.get(getPlanetPositionRedisKey(planetId, playerId));
-    if (!raw) {
-      return null;
-    }
-
-    return JSON.parse(raw) as PlanetHexPosition;
-  }
-
-  private async savePosition(
-    planetId: string,
-    playerId: string,
-    position: PlanetHexPosition,
-  ): Promise<void> {
-    await this.redisService.set(
-      getPlanetPositionRedisKey(planetId, playerId),
-      JSON.stringify(position),
-      PLANET_CONSTANTS.POSITION_TTL_SECONDS,
-    );
   }
 }

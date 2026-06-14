@@ -1,42 +1,78 @@
-import { Body, Controller, Post, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
-import { Response } from 'express';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Post,
+  Req,
+  Res,
+  UnauthorizedException,
+  UseGuards,
+} from '@nestjs/common';
+import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { AUTH_COOKIE_NAME, AUTH_COOKIE_PATH } from './constants/auth-cookie';
+import { clearAuthCookie, setAuthCookie } from './constants/auth-cookie';
+import { toAuthUser } from './dto/auth-user.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+
+interface AuthenticatedRequest extends Request {
+  user: { id: string; username: string; role?: string };
+}
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
-  async login(@Body() loginDto: LoginDto) {
+  @HttpCode(200)
+  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.authService.validateUser(loginDto.username, loginDto.password);
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    return this.authService.login(user);
+    const session = this.authService.signSession(user);
+    setAuthCookie(res, session.token);
+    return { user: session.user };
   }
 
   @Post('register')
-  async register(@Body() registerDto: RegisterDto) {
+  @HttpCode(201)
+  async register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) res: Response) {
     const user = await this.authService.register(
       registerDto.username,
       registerDto.password,
       registerDto.email,
     );
-    return this.authService.login(user);
+    const session = this.authService.signSession(user);
+    setAuthCookie(res, session.token);
+    return { user: session.user };
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async me(@Req() req: AuthenticatedRequest) {
+    const user = await this.authService.findById(req.user.id);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+    return toAuthUser(user);
   }
 
   @Post('logout')
+  @HttpCode(200)
   @UseGuards(JwtAuthGuard)
   logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie(AUTH_COOKIE_NAME, {
-      httpOnly: true,
-      path: AUTH_COOKIE_PATH,
-      sameSite: 'lax',
-    });
+    clearAuthCookie(res);
+    return { success: true };
+  }
+
+  @Post('forgot-password')
+  @HttpCode(200)
+  forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    void forgotPasswordDto;
     return { success: true };
   }
 }

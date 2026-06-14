@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { ConflictException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
@@ -9,6 +9,7 @@ import { User } from './entities/user.entity';
 
 describe('AuthService', () => {
   let service: AuthService;
+  let jwtService: { sign: jest.Mock };
   let usersRepository: {
     findOneBy: jest.Mock;
     create: jest.Mock;
@@ -27,6 +28,8 @@ describe('AuthService', () => {
       get: jest.fn(),
     };
 
+    jwtService = { sign: jest.fn().mockReturnValue('token') };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
@@ -36,7 +39,7 @@ describe('AuthService', () => {
         },
         {
           provide: JwtService,
-          useValue: { sign: jest.fn().mockReturnValue('token') },
+          useValue: jwtService,
         },
         {
           provide: ConfigService,
@@ -121,8 +124,11 @@ describe('AuthService', () => {
 
   describe('register', () => {
     it('creates a regular user account', async () => {
+      usersRepository.findOneBy.mockResolvedValue(null);
+
       await service.register('pilot42', 'secret12', 'pilot@example.com');
 
+      expect(usersRepository.findOneBy).toHaveBeenCalledWith({ username: 'pilot42' });
       expect(usersRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           username: 'pilot42',
@@ -133,6 +139,56 @@ describe('AuthService', () => {
       );
       const createdUser = usersRepository.create.mock.calls[0][0] as User;
       expect(await bcrypt.compare('secret12', createdUser.password)).toBe(true);
+    });
+
+    it('throws ConflictException when username is already taken', async () => {
+      usersRepository.findOneBy.mockResolvedValue({
+        id: 'existing-id',
+        username: 'pilot42',
+      });
+
+      await expect(service.register('pilot42', 'secret12')).rejects.toThrow(ConflictException);
+      expect(usersRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('signSession', () => {
+    it('returns user shape and signed token without exposing password or role', () => {
+      const user: User = {
+        id: 'user-uuid',
+        username: 'pilot42',
+        password: 'hashed',
+        email: 'pilot@example.com',
+        role: 'user',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      const session = service.signSession(user);
+
+      expect(session).toEqual({
+        user: {
+          id: 'user-uuid',
+          username: 'pilot42',
+          email: 'pilot@example.com',
+        },
+        token: 'token',
+      });
+      expect(jwtService.sign).toHaveBeenCalledWith({
+        username: 'pilot42',
+        sub: 'user-uuid',
+        role: 'user',
+      });
+    });
+  });
+
+  describe('findById', () => {
+    it('loads a user by id', async () => {
+      const user = { id: 'user-uuid', username: 'pilot42' };
+      usersRepository.findOneBy.mockResolvedValue(user);
+
+      await expect(service.findById('user-uuid')).resolves.toBe(user);
+      expect(usersRepository.findOneBy).toHaveBeenCalledWith({ id: 'user-uuid' });
     });
   });
 });

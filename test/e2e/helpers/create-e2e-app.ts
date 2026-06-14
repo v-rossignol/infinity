@@ -1,5 +1,6 @@
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import cookieParser from 'cookie-parser';
 import { AppModule } from '../../../src/app.module';
 import { SocketAdapter } from '../../../src/modules/socket/socket.adapter';
 
@@ -8,6 +9,7 @@ export const E2E_GLOBAL_PREFIX = 'infinity';
 export async function createE2eApp(): Promise<INestApplication> {
   const app = await NestFactory.create(AppModule);
   app.setGlobalPrefix(E2E_GLOBAL_PREFIX);
+  app.use(cookieParser());
   app.enableCors({
     origin: '*',
     credentials: true,

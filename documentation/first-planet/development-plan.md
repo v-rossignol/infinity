@@ -27,7 +27,7 @@ This plan tracks delivery of **first-planet spawn**: when a player enters the ga
 
 Domain rules and selection algorithms are defined in [first-planet-specifications.md](./first-planet-specifications.md). Deferred work (StellarGate cookie auth, partial-failure resume) is tracked in [TO-BE-FIXED.md](../TO-BE-FIXED.md).
 
-**Status:** specification complete — **implementation not started**.
+**Status:** specification complete — **delivered** (spawn + slim enter-game response). Player persistence model superseded by [wip/player-location/player-location.md](../wip/player-location/player-location.md) and [wip/player-location/development-plan.md](../wip/player-location/development-plan.md) (JSONB `location`, phases 0–6).
 
 ---
 

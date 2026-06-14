@@ -1,20 +1,23 @@
 import {
   BadRequestException,
+  ConflictException,
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
-import { getPlanetPositionRedisKey } from '../../shared/constants/planet.constants';
+import { buildPlanetLocation } from '../../shared/utils/player-location';
+import { StarService } from '../galaxy/star.service';
 import { StarSystemService } from '../galaxy/star-system.service';
-import { RedisService } from '../redis/redis.service';
+import { PlayerLocationService } from '../players/player-location.service';
 import { Planet } from './entities/planet.schema';
 import { PlanetsService } from './planets.service';
 
 describe('PlanetsService', () => {
   const planetId = 'star-uuid_planet_0';
   const starSystemId = 'star-uuid';
-  const playerId = 'socket-1';
+  const cubeId = 'cube-uuid';
+  const playerId = 'player-uuid';
   const summary = {
     id: planetId,
     name: 'Planet 1',
@@ -38,9 +41,14 @@ describe('PlanetsService', () => {
     getStarSystem: jest.fn(),
   };
 
-  const mockRedisService = {
-    get: jest.fn(),
-    set: jest.fn(),
+  const mockStarService = {
+    findById: jest.fn(),
+  };
+
+  const mockPlayerLocationService = {
+    getLocation: jest.fn(),
+    setLocation: jest.fn(),
+    updatePlanetHex: jest.fn(),
   };
 
   let service: PlanetsService;
@@ -49,15 +57,18 @@ describe('PlanetsService', () => {
     findById.mockReset();
     PlanetModel.mockClear();
     mockStarSystemService.getStarSystem.mockReset();
-    mockRedisService.get.mockReset();
-    mockRedisService.set.mockReset();
+    mockStarService.findById.mockReset();
+    mockPlayerLocationService.getLocation.mockReset();
+    mockPlayerLocationService.setLocation.mockReset();
+    mockPlayerLocationService.updatePlanetHex.mockReset();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PlanetsService,
         { provide: getModelToken(Planet.name), useValue: PlanetModel },
         { provide: StarSystemService, useValue: mockStarSystemService },
-        { provide: RedisService, useValue: mockRedisService },
+        { provide: StarService, useValue: mockStarService },
+        { provide: PlayerLocationService, useValue: mockPlayerLocationService },
       ],
     }).compile();
 
@@ -151,21 +162,32 @@ describe('PlanetsService', () => {
   });
 
   describe('joinPlanet', () => {
-    it('restores cached Redis position when present', async () => {
-      mockRedisService.get.mockResolvedValue(JSON.stringify({ q: 2, r: 3 }));
+    it('returns hex from PostgreSQL location when already on the same planet', async () => {
+      mockPlayerLocationService.getLocation.mockResolvedValue(
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId,
+          hex_coords: { q: 2, r: 3 },
+        }),
+      );
+      findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ _id: planetId, starSystemId, radius: 5 }),
+      });
 
       const position = await service.joinPlanet(playerId, planetId);
 
       expect(position).toEqual({ planetId, q: 2, r: 3 });
-      expect(findById).not.toHaveBeenCalled();
-      expect(mockRedisService.set).not.toHaveBeenCalled();
+      expect(mockPlayerLocationService.setLocation).not.toHaveBeenCalled();
     });
 
-    it('assigns random spawn and writes Redis when no cache exists', async () => {
-      mockRedisService.get.mockResolvedValue(null);
+    it('assigns random spawn and persists location when player is not on the planet', async () => {
+      mockPlayerLocationService.getLocation.mockResolvedValue(null);
       findById.mockReturnValue({
-        exec: jest.fn().mockResolvedValue({ _id: planetId, radius: 5 }),
+        exec: jest.fn().mockResolvedValue({ _id: planetId, starSystemId, radius: 5 }),
       });
+      mockStarService.findById.mockResolvedValue({ id: starSystemId, cube_id: cubeId });
+      mockPlayerLocationService.setLocation.mockResolvedValue(undefined);
 
       const position = await service.joinPlanet(playerId, planetId);
 
@@ -174,15 +196,37 @@ describe('PlanetsService', () => {
       expect(position.q).toBeLessThan(5);
       expect(position.r).toBeGreaterThanOrEqual(0);
       expect(position.r).toBeLessThan(5);
-      expect(mockRedisService.set).toHaveBeenCalledWith(
-        getPlanetPositionRedisKey(planetId, playerId),
-        JSON.stringify({ q: position.q, r: position.r }),
-        expect.any(Number),
+      expect(mockPlayerLocationService.setLocation).toHaveBeenCalledWith(
+        playerId,
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId,
+          hex_coords: { q: position.q, r: position.r },
+        }),
+      );
+    });
+
+    it('throws 409 when player is on a different planet', async () => {
+      findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ _id: planetId, starSystemId, radius: 5 }),
+      });
+      mockPlayerLocationService.getLocation.mockResolvedValue(
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId: 'other-planet',
+          hex_coords: { q: 0, r: 0 },
+        }),
+      );
+
+      await expect(service.joinPlanet(playerId, planetId)).rejects.toBeInstanceOf(
+        ConflictException,
       );
     });
 
     it('throws 404 when planet document is missing on join', async () => {
-      mockRedisService.get.mockResolvedValue(null);
+      mockPlayerLocationService.getLocation.mockResolvedValue(null);
       findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
 
       await expect(service.joinPlanet(playerId, planetId)).rejects.toBeInstanceOf(
@@ -192,7 +236,16 @@ describe('PlanetsService', () => {
   });
 
   describe('handlePlayerMove', () => {
-    it('persists hex position to Redis', async () => {
+    it('persists hex position to PostgreSQL', async () => {
+      mockPlayerLocationService.getLocation.mockResolvedValue(
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId,
+          hex_coords: { q: 0, r: 0 },
+        }),
+      );
+
       const result = await service.handlePlayerMove(playerId, {
         planetId,
         q: 4,
@@ -200,11 +253,57 @@ describe('PlanetsService', () => {
       });
 
       expect(result).toEqual({ planetId, q: 4, r: 1 });
-      expect(mockRedisService.set).toHaveBeenCalledWith(
-        getPlanetPositionRedisKey(planetId, playerId),
-        JSON.stringify({ q: 4, r: 1 }),
-        expect.any(Number),
+      expect(mockPlayerLocationService.updatePlanetHex).toHaveBeenCalledWith(playerId, {
+        q: 4,
+        r: 1,
+      });
+    });
+
+    it('calls updatePlanetHex on every move', async () => {
+      mockPlayerLocationService.getLocation.mockResolvedValue(
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId,
+          hex_coords: { q: 0, r: 0 },
+        }),
       );
+
+      await service.handlePlayerMove(playerId, { planetId, q: 1, r: 2 });
+      await service.handlePlayerMove(playerId, { planetId, q: 3, r: 4 });
+
+      expect(mockPlayerLocationService.updatePlanetHex).toHaveBeenCalledTimes(2);
+      expect(mockPlayerLocationService.updatePlanetHex).toHaveBeenNthCalledWith(1, playerId, {
+        q: 1,
+        r: 2,
+      });
+      expect(mockPlayerLocationService.updatePlanetHex).toHaveBeenNthCalledWith(2, playerId, {
+        q: 3,
+        r: 4,
+      });
+    });
+
+    it('throws 409 when player is not at planet depth', async () => {
+      mockPlayerLocationService.getLocation.mockResolvedValue(null);
+
+      await expect(
+        service.handlePlayerMove(playerId, { planetId, q: 1, r: 2 }),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('throws 409 when player is on a different planet', async () => {
+      mockPlayerLocationService.getLocation.mockResolvedValue(
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId: 'other-planet',
+          hex_coords: { q: 0, r: 0 },
+        }),
+      );
+
+      await expect(
+        service.handlePlayerMove(playerId, { planetId, q: 1, r: 2 }),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
   });
 });

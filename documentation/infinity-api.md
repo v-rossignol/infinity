@@ -62,16 +62,20 @@ A global `ValidationPipe` is active. Invalid request bodies return **400 Bad Req
 
 CORS is enabled with `origin: '*'` and `credentials: true` (development only — restrict before production).
 
-### Authentication (current state)
+### Authentication
 
 | Aspect | Value |
 |--------|-------|
 | Mechanism | JWT signed with `JWT_SECRET` |
-| Token delivery | JSON field `access_token` on `POST /infinity/auth/login` and `POST /infinity/auth/register` |
-| Token lifetime | `1h` (`JwtModule` `signOptions.expiresIn` in `auth.module.ts`) |
-| Header | `Authorization: Bearer <access_token>` |
-| Protected routes | **Cube, star, star-system, and first spawn** (`/infinity/cubes/*`, `/infinity/stars/*`, `/infinity/galaxy/systems/*`, `POST /infinity/players/me/enter-game`) require a valid JWT |
-| Public routes | Health, auth, `GET/PATCH /infinity/players/*` (except `enter-game`), planets, resources |
+| Token delivery | `httpOnly` cookie `infinity_token` on `POST /infinity/auth/login` and `POST /infinity/auth/register` (`Path=/infinity`, `SameSite=Lax`, `Secure` when `NODE_ENV=production`) |
+| Token lifetime | `1h` (`JwtModule` `signOptions.expiresIn` in `auth.module.ts`; cookie `Max-Age` matches) |
+| Authenticated requests | Cookie `infinity_token` (browser / same-origin clients) **or** `Authorization: Bearer <jwt>` (API tests, scripts) |
+| Session restore | `GET /infinity/auth/me` — flat `{ id, username, email }` |
+| Logout | `POST /infinity/auth/logout` — clears cookie |
+| Protected routes | **Cube, star, star-system, auth session endpoints, and first spawn** require a valid JWT |
+| Public routes | Health, auth register/login/forgot-password, `GET /infinity/players/:userId`, planets, resources |
+
+See [auth.md](./auth.md) for how clients must handle sessions (cookie vs Bearer, lifecycle, pitfalls). Endpoint payloads: [infinity-api.md](./infinity-api.md) (Auth section) and [stellar-gate-api.md](./stellar-gate-api.md).
 
 ---
 
@@ -82,11 +86,20 @@ CORS is enabled with `origin: '*'` and `credentials: true` (development only —
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `GET` | `/infinity/health` | Public | Server health check |
-| `POST` | `/infinity/auth/register` | Public | Create account and return JWT |
-| `POST` | `/infinity/auth/login` | Public | Authenticate and return JWT |
+| `POST` | `/infinity/auth/register` | Public | Create account; set session cookie; return `{ user }` |
+| `POST` | `/infinity/auth/login` | Public | Authenticate; set session cookie; return `{ user }` |
+| `GET` | `/infinity/auth/me` | JWT | Restore session — flat user object |
+| `POST` | `/infinity/auth/logout` | JWT | Clear session cookie |
+| `POST` | `/infinity/auth/forgot-password` | Public | Stub — always `{ success: true }` (no email sent) |
 | `POST` | `/infinity/players/me/enter-game` | JWT | Bootstrap first planet spawn; return playable state |
 | `GET` | `/infinity/players/:userId` | Public | Get or create player profile for a user |
-| `PATCH` | `/infinity/players/:playerId/position` | Public | Update player position |
+| `PATCH` | `/infinity/players/me/location` | JWT | Replace player `location` (full JSONB object or `null`) |
+| `POST` | `/infinity/players/me/location/enter-system` | JWT | View transition: cube → star system |
+| `POST` | `/infinity/players/me/location/enter-planet` | JWT | View transition: star system → planet |
+| `POST` | `/infinity/players/me/location/leave-planet` | JWT | View transition: planet → star system |
+| `POST` | `/infinity/players/me/location/leave-system` | JWT | View transition: star system → cube |
+| `PATCH` | `/infinity/players/me/location/cube` | JWT | Update local cube position (cube depth) |
+| `PATCH` | `/infinity/players/me/location/system` | JWT | Update star-system map position (system depth) |
 | `GET` | `/infinity/galaxy/systems/:systemId` | JWT | Get or generate a star system (`systemId` = star UUID) |
 | `GET` | `/infinity/cubes/by-name/:name` | JWT | Get cube and stars by hash-based name |
 | `GET` | `/infinity/cubes/:x/:y/:z` | JWT | Get or generate cube and stars by center coordinates |
@@ -126,7 +139,7 @@ Lightweight health check. Does not verify database connectivity.
 
 #### `POST /infinity/auth/register`
 
-Create a new user account. On success, returns a JWT (same shape as login).
+Create a new user account and establish a session.
 
 **Request body**
 
@@ -149,26 +162,32 @@ Content-Type: application/json
 }
 ```
 
-**Success response — 201 Created** (implicit 200 from NestJS default)
+**Success response — 201 Created**
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "username": "pilot42",
+    "email": "pilot@example.com"
+  }
 }
 ```
+
+**Cookie:** `Set-Cookie: infinity_token=<jwt>; HttpOnly; Path=/infinity; SameSite=Lax; Max-Age=3600`
 
 **Error responses**
 
 | Status | Condition |
 |--------|-----------|
 | `400` | Validation failure (missing username, short password, invalid email) |
-| `500` | Username already exists (PostgreSQL unique constraint on `username`) |
+| `409` | Username already taken |
 
 ---
 
 #### `POST /infinity/auth/login`
 
-Validate credentials and return a JWT.
+Validate credentials and establish a session.
 
 **Request body**
 
@@ -193,9 +212,15 @@ Content-Type: application/json
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "username": "pilot42",
+    "email": "pilot@example.com"
+  }
 }
 ```
+
+**Cookie:** same as register.
 
 JWT payload (decoded):
 
@@ -203,6 +228,7 @@ JWT payload (decoded):
 {
   "username": "pilot42",
   "sub": "<user-uuid>",
+  "role": "user",
   "iat": 1717776000,
   "exp": 1717779600
 }
@@ -217,13 +243,75 @@ JWT payload (decoded):
 
 ---
 
+#### `GET /infinity/auth/me`
+
+Restore the current session. Response is a **flat** user object (not wrapped in `{ user }`).
+
+**Authentication:** JWT via cookie or Bearer header.
+
+**Success response — 200 OK**
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "username": "pilot42",
+  "email": "pilot@example.com"
+}
+```
+
+**Error responses**
+
+| Status | Condition |
+|--------|-----------|
+| `401` | Missing, invalid, or expired JWT; user no longer exists |
+
+---
+
+#### `POST /infinity/auth/logout`
+
+Clear the session cookie.
+
+**Authentication:** JWT via cookie or Bearer header.
+
+**Success response — 200 OK**
+
+```json
+{
+  "success": true
+}
+```
+
+**Cookie:** `Set-Cookie: infinity_token=; …; Max-Age=0`
+
+---
+
+#### `POST /infinity/auth/forgot-password`
+
+Stub endpoint — validates email format and returns success. No email is sent.
+
+**Request body**
+
+| Field | Type | Required |
+|-------|------|----------|
+| `email` | string | yes (valid email) |
+
+**Success response — 200 OK**
+
+```json
+{
+  "success": true
+}
+```
+
+Always returns `200`, even when the email is not registered.
+
 ### Players
 
 Player data is stored in **PostgreSQL** (TypeORM `Player` entity).
 
 #### `GET /infinity/players/:userId`
 
-Fetch the player profile linked to a user. If none exists, a new player is created with default position `(0, 0, 0)`.
+Fetch the player profile linked to a user. If none exists, a new **freshy** player is created (`location: null`).
 
 **Path parameters**
 
@@ -237,12 +325,7 @@ Fetch the player profile linked to a user. If none exists, a new player is creat
 {
   "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
   "userId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-  "galaxyX": 0,
-  "galaxyY": 0,
-  "galaxyZ": 0,
-  "currentPlanetId": null,
-  "planetX": 0,
-  "planetY": 0,
+  "location": null,
   "createdAt": "2026-06-07T12:00:00.000Z",
   "updatedAt": "2026-06-07T12:00:00.000Z"
 }
@@ -250,13 +333,17 @@ Fetch the player profile linked to a user. If none exists, a new player is creat
 
 The `user` relation is not eagerly loaded in the response.
 
+**Freshy clients:** When `location` is `null`, the player is authenticated but not yet in the world. Call `POST /infinity/players/me/enter-game` (JWT) to spawn or resume.
+
+**Location shapes** depend on active view depth — see [wip/player-location/player-location.md](./wip/player-location/player-location.md) and [wip/player-location/example.json](./wip/player-location/example.json).
+
 ---
 
 #### `POST /infinity/players/me/enter-game`
 
-Bootstrap a **first-time** playable world for the authenticated user, or return the existing spawn context if the player already has a `currentPlanetId`. Intended entry point after StellarGate login (see [first-planet/first-planet-specifications.md](./first-planet/first-planet-specifications.md)).
+Bootstrap a **first-time** playable world for the authenticated user, or return the existing player when `location` is already set. Intended entry point after StellarGate login (see [first-planet/first-planet-specifications.md](./first-planet/first-planet-specifications.md) and [wip/player-location/player-location.md](./wip/player-location/player-location.md)).
 
-**Authentication:** JWT required — `Authorization: Bearer <access_token>`. The server resolves the user from the token payload (`sub` → `User.id`).
+**Authentication:** JWT required — cookie `infinity_token` or `Authorization: Bearer <jwt>`. The server resolves the user from the token payload (`sub` → `User.id`).
 
 **Request body:** empty (no body).
 
@@ -269,145 +356,138 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 **Success response — 200 OK**
 
-Returns a single object with the updated player profile, galaxy context, materialized planet document, and surface spawn coordinates.
+Returns the player profile only. **`location.planet.id`** is the primary handoff for Terra View; load planet surface and galaxy context via separate REST calls.
 
 ```json
 {
   "player": {
     "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
     "userId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
-    "galaxyX": 9.2,
-    "galaxyY": -3.5,
-    "galaxyZ": 3.0,
-    "currentPlanetId": "661e8400-e29b-41d4-a716-446655440001_planet_0",
-    "planetX": 2,
-    "planetY": 5,
+    "location": {
+      "cube": { "id": "550e8400-e29b-41d4-a716-446655440000" },
+      "starSystem": { "id": "661e8400-e29b-41d4-a716-446655440001" },
+      "planet": {
+        "id": "661e8400-e29b-41d4-a716-446655440001_planet_0",
+        "hex_coords": { "q": 2, "r": 5 }
+      }
+    },
     "createdAt": "2026-06-11T12:00:00.000Z",
     "updatedAt": "2026-06-11T12:05:00.000Z"
-  },
-  "cube": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "name": "kikyhk",
-    "origin": { "x": 10, "y": 0, "z": 0 },
-    "star_ids": ["661e8400-e29b-41d4-a716-446655440001"]
-  },
-  "star": {
-    "id": "661e8400-e29b-41d4-a716-446655440001",
-    "name": "Alpha kikyhk",
-    "local_coords": { "x": 4.2, "y": 1.5, "z": 8.0 },
-    "cube_id": "550e8400-e29b-41d4-a716-446655440000",
-    "properties": { "type": "yellow" }
-  },
-  "starSystemId": "661e8400-e29b-41d4-a716-446655440001",
-  "planet": {
-    "_id": "661e8400-e29b-41d4-a716-446655440001_planet_0",
-    "name": "Planet 1",
-    "starSystemId": "661e8400-e29b-41d4-a716-446655440001",
-    "type": "rocky",
-    "radius": 9,
-    "resources": { "iron": 420, "gold": 75, "water": 1300 },
-    "surface": {
-      "hexagons": [
-        {
-          "biome": "desert",
-          "resources": [],
-          "dangerLevel": 3,
-          "coordinates": { "q": 0, "r": 0 }
-        }
-      ],
-      "generatedAt": "2026-06-11T12:05:00.000Z"
-    },
-    "createdAt": "2026-06-11T12:05:00.000Z",
-    "updatedAt": "2026-06-11T12:05:00.000Z"
-  },
-  "surfacePosition": { "q": 2, "r": 5 }
+  }
+}
+```
+
+Before first spawn (`location` is `null`):
+
+```json
+{
+  "player": {
+    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "userId": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+    "location": null,
+    "createdAt": "2026-06-11T12:00:00.000Z",
+    "updatedAt": "2026-06-11T12:00:00.000Z"
+  }
 }
 ```
 
 | Field | Description |
 |-------|-------------|
-| `player` | PostgreSQL `Player` after spawn — `galaxyX/Y/Z` are **global** star coordinates; `planetX`/`planetY` map to hex `q`/`r` |
-| `cube` | Spawn cube metadata (new adjacent cube on first entry; seed `(0,0,0)` is never a spawn target) |
-| `star` | Parent star in the spawn cube |
-| `starSystemId` | Same as `star.id` (`StarSystem._id`) |
-| `planet` | Full MongoDB `Planet` document (same shape as `GET /infinity/planets/:planetId`) |
-| `surfacePosition` | Hex coords written to Redis via `joinPlanet` — restored on subsequent `PLANET_JOIN` |
+| `player.location` | Contextual position — **planet depth** after first spawn; `null` for a **freshy** |
+| `player.location.planet.id` | Use with `GET /infinity/planets/:planetId` for surface data |
+| `player.location.planet.hex_coords` | Spawn hex `{ q, r }` persisted in PostgreSQL |
 
 **Server behavior (first entry)**
 
-1. Find or create `Player` for JWT `sub`.
-2. If `currentPlanetId` is set → reload planet/star/cube; **no** new world generation.
-3. Otherwise orchestrate spawn: pick adjacent cube origin → create cube + stars → random star → star system → **largest `rocky` planet** → materialize `Planet` + surface → random hex position in Redis → persist `Player` **last**.
+1. Find or create `Player` for JWT `sub` (`location: null`).
+2. If `location` is set → return `{ player }` immediately; **no** world re-fetch.
+3. Otherwise orchestrate spawn: pick adjacent cube origin → create cube + stars → random star → star system → **largest `rocky` planet** → materialize `Planet` + surface → random hex → persist `Player.location` **last** (planet depth).
 
 **Server behavior (repeat call)**
 
-Idempotent: returns the same spawn context for an already-spawned player without creating new cubes or planets.
+Idempotent: returns the same `{ player }` for an already-spawned player without creating new cubes or planets.
 
 **Error responses**
 
 | Status | Condition |
 |--------|-----------|
 | `401 Unauthorized` | Missing or invalid JWT |
-| `404 Not Found` | Existing spawn references missing star/cube/planet (data inconsistency) |
 | `503 Service Unavailable` | `{ "statusCode": 503, "message": "Unable to allocate spawn location" }` — spawn retries exhausted (extremely unlikely) |
 
 **Client flow (StellarGate first entry)**
 
-1. `POST /infinity/auth/login` → `access_token`
-2. `POST /infinity/players/me/enter-game` (Bearer) → render planet from response
-3. Socket.IO `PLANET_JOIN` with `planetId` → restores `surfacePosition` from Redis
+1. `POST /infinity/auth/register` or `POST /infinity/auth/login` → session cookie `infinity_token`
+2. `GET /infinity/auth/me` (optional) — restore session on app load
+3. `POST /infinity/players/me/enter-game` — cookie sent automatically on same-origin requests
+4. `GET /infinity/planets/:planetId` — load surface using `player.location.planet.id`
+5. Socket.IO `PLANET_JOIN` with `planetId` — real-time surface sync (see planet events)
 
-> **Cookie auth:** StellarGate targets `httpOnly` cookie `infinity_token` instead of Bearer tokens — see [stellar-gate-api.md](./stellar-gate-api.md) and [TO-BE-FIXED.md](./TO-BE-FIXED.md) §1. Until cookie extraction is implemented, use Bearer JWT in development.
+See [stellar-gate-api.md](./stellar-gate-api.md) for the full auth contract.
 
 ---
 
-#### `PATCH /infinity/players/:playerId/position`
+#### Player location (JWT required)
 
-Partially update a player's galaxy or planet coordinates.
+Authenticated routes under `/infinity/players/me/location`. All successful responses return `{ player }` with the updated `location`. Prefer **transition** routes for view changes; use **patch** routes for moves within the current depth.
 
-**Path parameters**
+Spec: [wip/player-location/player-location.md](./wip/player-location/player-location.md).
 
-| Name | Type | Description |
-|------|------|-------------|
-| `playerId` | UUID string | `Player.id` |
+##### `PATCH /infinity/players/me/location`
 
-**Request body** — all fields optional; only provided fields are updated.
+Replace the full `location` object (or set `null` to clear — rarely needed; freshy is normally `location: null` before first spawn).
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `galaxyX` | number | Galaxy-space X coordinate |
-| `galaxyY` | number | Galaxy-space Y coordinate |
-| `galaxyZ` | number | Galaxy-space Z coordinate |
-| `currentPlanetId` | string | Active planet identifier |
-| `planetX` | number | Surface X coordinate |
-| `planetY` | number | Surface Y coordinate |
+**Request body**
 
-**Example request**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `location` | object \| `null` | yes | Full depth shape per spec, or `null` |
+
+**Example — planet depth**
 
 ```http
-PATCH /infinity/players/a1b2c3d4-e5f6-7890-abcd-ef1234567890/position
+PATCH /infinity/players/me/location
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 Content-Type: application/json
 
 {
-  "galaxyX": 120.5,
-  "galaxyY": -45.2,
-  "galaxyZ": 10,
-  "currentPlanetId": "system_alpha_planet_0",
-  "planetX": 32,
-  "planetY": 18
+  "location": {
+    "cube": { "id": "550e8400-e29b-41d4-a716-446655440000" },
+    "starSystem": { "id": "661e8400-e29b-41d4-a716-446655440001" },
+    "planet": {
+      "id": "661e8400-e29b-41d4-a716-446655440001_planet_0",
+      "hex_coords": { "q": 4, "r": 7 }
+    }
+  }
 }
 ```
-
-**Success response — 200 OK**
-
-Returns the updated `Player` object (same shape as `GET /infinity/players/:userId`).
 
 **Error responses**
 
 | Status | Condition |
 |--------|-----------|
-| `404 Not Found` | `{ "statusCode": 404, "message": "Player <id> not found" }` |
-| `400 Bad Request` | Invalid field types |
+| `400` | Invalid `location` shape (invariant violation) |
+| `401` | Missing or invalid JWT |
+| `404` | Player not found for authenticated user |
+
+##### View transitions
+
+| Route | From depth | To depth | Body fields |
+|-------|------------|----------|-------------|
+| `POST …/enter-system` | cube | star system | `starSystemId`, `x`, `y` |
+| `POST …/enter-planet` | star system | planet | `planetId`, `q`, `r` |
+| `POST …/leave-planet` | planet | star system | `x`, `y` |
+| `POST …/leave-system` | star system | cube | `x`, `y`, `z` (local cube coords) |
+
+**409 Conflict** when the player is not at the required source depth.
+
+##### Position patches (same depth)
+
+| Route | Depth | Body |
+|-------|-------|------|
+| `PATCH …/location/cube` | cube | `{ x, y, z }` local `[0, 10)` LY per axis |
+| `PATCH …/location/system` | star system | `{ x, y }` |
+
+**409 Conflict** when the player is not at the matching depth.
 
 ---
 
@@ -857,32 +937,38 @@ The server attaches Socket.IO to the same HTTP port as the REST API.
 | CORS | `origin: '*'` |
 | Connection recovery | 2 minutes max disconnection |
 
-Connect from a client:
+Connect from a client (authenticated moves):
 
 ```javascript
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:4000', { transports: ['websocket'] });
+const socket = io('http://localhost:4000', {
+  transports: ['websocket'],
+  auth: { token: '<jwt>' },
+});
 ```
 
 ### Events summary
 
 | Direction | Event | Description |
 |-----------|-------|-------------|
-| Client → Server | `GALAXY_MOVE` | Player moved in galaxy space (position broadcast only) |
-| Server → Client | `GALAXY_UPDATE` | Broadcast galaxy movement to all clients |
+| Client → Server | `GALAXY_MOVE` | Player moved at **cube depth**; persists `cube.position` |
+| Server → Client | `GALAXY_UPDATE` | Broadcast cube movement `{ playerId, x, y, z }` |
+| Client → Server | `SYSTEM_MOVE` | Player moved at **star-system depth**; persists `starSystem.position` |
+| Server → Client | `SYSTEM_UPDATE` | Broadcast system map movement `{ playerId, x, y }` |
 | Client → Server | `REQUEST_CUBE` | Request cube + stars for a **global** position |
 | Server → Client | `CUBE_DATA` | Cube and stars payload (to requesting client) |
 | Client → Server | `REQUEST_STAR` | Request star data by id |
 | Server → Client | `STAR_DATA` | Star document (to requesting client) |
 | Server → Client | `GALAXY_ERROR` | Error response for cube/star requests |
-| Client → Server | `PLANET_JOIN` | Join planet Socket.IO room; random spawn or Redis restore |
+| Client → Server | `PLANET_JOIN` | Join planet room; restore hex from PostgreSQL or roll spawn |
 | Client → Server | `PLANET_LEAVE` | Leave planet room |
 | Client → Server | `PLANET_MOVE` | Player moved on hex surface `(q, r)` |
 | Server → Client | `PLANET_UPDATE` | Planet-room position update `{ playerId, planetId, q, r }` |
 | Server → Client | `PLANET_ERROR` | Error response for planet socket handlers |
+| Server → Client | `SYSTEM_ERROR` | Error response for system socket handlers |
 
-Authentication is **not** enforced on WebSocket connections.
+**Authentication:** Planet and move handlers (`GALAXY_MOVE`, `SYSTEM_MOVE`, `PLANET_JOIN`, `PLANET_MOVE`) require a JWT on connect — pass `auth: { token }` in the Socket.IO handshake, or send `Authorization: Bearer` / cookie `infinity_token`. The server resolves **`Player.id`** (not socket id) for persistence and broadcasts. Read-only galaxy requests (`REQUEST_CUBE`, `REQUEST_STAR`) work without auth.
 
 ---
 
@@ -977,26 +1063,28 @@ socket.emit('REQUEST_STAR', { starId: '661e8400-e29b-41d4-a716-446655440001' });
 
 ### `GALAXY_MOVE` (client → server)
 
-Notify the server of a position change in galaxy coordinates.
+Notify the server of a position change at **cube depth** (local 3D coordinates inside the cube volume).
 
 **Payload**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `x` | number | Galaxy X |
-| `y` | number | Galaxy Y |
-| `z` | number | Galaxy Z |
+| `x` | number | Local cube X `[0, 10)` LY |
+| `y` | number | Local cube Y |
+| `z` | number | Local cube Z |
 
 **Example**
 
 ```javascript
-socket.emit('GALAXY_MOVE', { x: 120.5, y: -45.2, z: 10 });
+socket.emit('GALAXY_MOVE', { x: 2.1, y: 3.4, z: 5.6 });
 ```
 
 **Server behavior**
 
-- Logs the movement (via `GalaxyService.handlePlayerMove`)
+- Requires authenticated socket (JWT → `Player.id`)
+- Persists `cube.position` in PostgreSQL via `PlayerLocationService.updateCubePosition`
 - Broadcasts `GALAXY_UPDATE` to **all** connected clients
+- Emits `GALAXY_ERROR` (`401` / `409`) on auth or depth mismatch
 - Does **not** load or emit cube data (use `REQUEST_CUBE` separately)
 
 ---
@@ -1007,16 +1095,54 @@ socket.emit('GALAXY_MOVE', { x: 120.5, y: -45.2, z: 10 });
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `playerId` | string | Socket.IO client id (not game `Player.id`) |
-| `x` | number | Galaxy X |
-| `y` | number | Galaxy Y |
-| `z` | number | Galaxy Z |
+| `playerId` | string | **`Player.id`** (UUID) |
+| `x` | number | Local cube X |
+| `y` | number | Local cube Y |
+| `z` | number | Local cube Z |
 
 ```javascript
 socket.on('GALAXY_UPDATE', (data) => {
-  // { playerId: 'abc123', x: 120.5, y: -45.2, z: 10 }
+  // { playerId: 'a1b2c3d4-...', x: 2.1, y: 3.4, z: 5.6 }
 });
 ```
+
+---
+
+### `SYSTEM_MOVE` (client → server)
+
+Notify the server of a position change at **star-system depth** (2D map coordinates).
+
+**Payload**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `x` | number | System map X |
+| `y` | number | System map Y |
+
+**Example**
+
+```javascript
+socket.emit('SYSTEM_MOVE', { x: 145.2, y: 34.8 });
+```
+
+**Server behavior**
+
+- Requires authenticated socket
+- Persists `starSystem.position` in PostgreSQL
+- Broadcasts `SYSTEM_UPDATE` to all clients
+- Emits `SYSTEM_ERROR` (`401` / `409`) on failure
+
+---
+
+### `SYSTEM_UPDATE` (server → client)
+
+**Payload:** `{ playerId, x, y }` — `playerId` is **`Player.id`**.
+
+---
+
+### `SYSTEM_ERROR` (server → client)
+
+Same shape as `PLANET_ERROR`: `{ event, message, statusCode }`.
 
 ---
 
@@ -1038,8 +1164,8 @@ socket.emit('PLANET_JOIN', { planetId: '661e8400-e29b-41d4-a716-446655440001_pla
 
 **Server behavior**
 
-1. Restore last `(q, r)` from **Redis** when present for this socket id + planet.
-2. Otherwise pick a **random** hex with `0 ≤ q, r < radius` and store in Redis.
+1. Restore `(q, r)` from **`Player.location`** when the player is already at planet depth on this planet.
+2. Otherwise pick a **random** hex with `0 ≤ q, r < radius`, persist planet-depth `location` in PostgreSQL.
 3. Add the client to room `planetId`.
 4. Emit `PLANET_UPDATE` to the room (including the joining client).
 
@@ -1048,13 +1174,15 @@ socket.emit('PLANET_JOIN', { planetId: '661e8400-e29b-41d4-a716-446655440001_pla
 | Status | Condition |
 |--------|-----------|
 | `400` | Missing `planetId` |
+| `401` | Unauthenticated socket |
 | `404` | Planet document not found (REST load required first) |
+| `409` | Player on a different planet |
 
 ---
 
 ### `PLANET_LEAVE` (client → server)
 
-Leave the planet Socket.IO room. Redis position is **kept** so a later `PLANET_JOIN` restores the last hex.
+Leave the planet Socket.IO room. **`Player.location`** in PostgreSQL is unchanged.
 
 **Payload**
 
@@ -1092,8 +1220,10 @@ socket.emit('PLANET_MOVE', {
 
 **Server behavior**
 
-- Persists `(q, r)` to Redis (`planet:position:{planetId}:{socketId}`)
+- Requires authenticated socket
+- Persists `planet.hex_coords` in PostgreSQL (`Player.location`)
 - Emits `PLANET_UPDATE` to room `planetId`
+- Emits `PLANET_ERROR` (`401` / `409`) when not at planet depth or wrong planet
 
 ---
 
@@ -1103,7 +1233,7 @@ socket.emit('PLANET_MOVE', {
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `playerId` | string | Socket.IO client id |
+| `playerId` | string | **`Player.id`** (UUID) |
 | `planetId` | string | Planet identifier |
 | `q` | number | Axial hex coordinate |
 | `r` | number | Axial hex coordinate |
@@ -1139,15 +1269,21 @@ sequenceDiagram
 
   Client->>REST: POST /infinity/auth/register
   REST->>DB: Create User
-  REST-->>Client: { access_token }
+  REST-->>Client: Set-Cookie infinity_token + { user }
 
-  Client->>REST: POST /infinity/players/me/enter-game (Bearer token)
+  Client->>REST: GET /infinity/auth/me (optional)
+  REST-->>Client: { id, username, email }
+
+  Client->>REST: POST /infinity/players/me/enter-game (cookie or Bearer)
   REST->>DB: Spawn cube, star system, planet; update Player
-  REST-->>Client: { player, cube, star, planet, surfacePosition }
+  REST-->>Client: { player } (location.planet.id after spawn)
 
-  Client->>WS: connect
+  Client->>REST: GET /infinity/planets/{planetId}
+  REST-->>Client: Planet + surface
+
+  Client->>WS: connect (auth.token JWT)
   Client->>WS: PLANET_JOIN { planetId }
-  WS->>DB: Redis position (restore from enter-game)
+  WS->>DB: Player.location (PostgreSQL)
   WS-->>Client: PLANET_UPDATE { playerId, q, r }
 
   Note over Client,REST: Manual galaxy navigation (optional)
@@ -1185,7 +1321,7 @@ sequenceDiagram
 | `documentation/planets/development-plan.md` | Hex planet implementation phases and test plan |
 | `documentation/stellar-system/README.md` | Stellar system feature — implementation status |
 | `documentation/first-planet/first-planet-specifications.md` | First spawn orchestration rules and selection algorithms |
-| `documentation/first-planet/development-plan.md` | First-planet implementation phases |
+| `documentation/wip/player-location/player-location.md` | Contextual player location model (JSONB, view depth, transitions) |
 | `documentation/admin-api.md` | Admin REST API — `/infinity/admin/*` routes (JWT + admin role) |
 | `documentation/stellar-gate-api.md` | Target auth contract for the StellarGate client (cookie-based JWT, `/infinity` prefix) |
 | `documentation/galaxy/README.md` | Galaxy documentation index (design, naming, phase specs) |
@@ -1197,9 +1333,9 @@ sequenceDiagram
 
 ## Not implemented (out of scope for this reference)
 
-- Cookie-based session auth
+- JWT revocation / Redis session blacklist
+- Real forgot-password email delivery
 - `GET /infinity/coordinates/convert` (coordinate utility endpoint)
-- JWT on WebSocket connections
 - `CUBE_UPDATED` broadcasts (deferred until planets-on-star)
 - REST endpoint for resource harvesting (`ResourcesService.harvest` is service-only)
-- Redis-backed session caching (Redis is used for cube cache and planet surface positions)
+- Redis-backed session caching (Redis is used for cube cache only; player location is PostgreSQL JSONB)

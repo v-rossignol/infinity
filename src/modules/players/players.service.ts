@@ -1,14 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Player } from './entities/player.entity';
-import { UpdatePositionDto } from './dto/update-position.dto';
+import { PlayerLocationService } from './player-location.service';
 
 @Injectable()
 export class PlayersService {
   constructor(
     @InjectRepository(Player)
     private playersRepository: Repository<Player>,
+    private readonly playerLocationService: PlayerLocationService,
   ) {}
 
   async findByUserId(userId: string) {
@@ -16,16 +17,11 @@ export class PlayersService {
   }
 
   async createForUser(userId: string) {
-    const player = this.playersRepository.create({ userId });
+    const player = this.playersRepository.create({ userId, location: null });
     return this.playersRepository.save(player);
   }
 
-  async updatePosition(playerId: string, position: UpdatePositionDto) {
-    const player = await this.playersRepository.findOneBy({ id: playerId });
-    if (!player) {
-      throw new NotFoundException(`Player ${playerId} not found`);
-    }
-    Object.assign(player, position);
-    return this.playersRepository.save(player);
+  async setLocation(playerId: string, location: Player['location']) {
+    return this.playerLocationService.setLocation(playerId, location);
   }
 }

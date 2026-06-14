@@ -1,8 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { Socket } from 'socket.io-client';
 import { PLANET_EVENTS } from '../../src/modules/socket/events/planet.events';
-import { registerAndGetToken } from './helpers/auth.helper';
+import { registerAndGetAuth } from './helpers/auth.helper';
 import { apiPath, createE2eApp, getAppPort, shouldRunE2e } from './helpers/create-e2e-app';
 import { globalPositionInCube, nextGridOrigin } from './helpers/grid-origin.helper';
 import { connectSocket, emitAndWaitFor } from './helpers/socket.helper';
@@ -69,7 +68,8 @@ describeE2e('Planets (e2e)', () => {
   beforeAll(async () => {
     app = await createE2eApp();
     port = getAppPort(app);
-    token = await registerAndGetToken(app);
+    const auth = await registerAndGetAuth(app);
+    token = auth.token;
   }, 60_000);
 
   afterAll(async () => {
@@ -102,7 +102,9 @@ describeE2e('Planets (e2e)', () => {
     it('rejects first entry without systemId', async () => {
       const uniquePlanetId = `e2e-missing-${Date.now()}_planet_0`;
 
-      await request(app.getHttpServer()).get(apiPath(`/planets/${uniquePlanetId}`)).expect(400);
+      await request(app.getHttpServer())
+        .get(apiPath(`/planets/${uniquePlanetId}`))
+        .expect(400);
     });
 
     it('returns 404 when planet id is missing from star-system summary', async () => {
@@ -145,55 +147,59 @@ describeE2e('Planets (e2e)', () => {
   });
 
   describe('WebSocket planet events', () => {
-    let socket: Socket;
+    it('PLANET_JOIN and PLANET_MOVE persist hex coords in PostgreSQL', async () => {
+      const auth = await registerAndGetAuth(app);
+      const socket = await connectSocket(port, auth.token);
 
-    beforeAll(async () => {
-      socket = await connectSocket(port);
+      try {
+        const enterGame = await request(app.getHttpServer())
+          .post(apiPath('/players/me/enter-game'))
+          .set('Authorization', `Bearer ${auth.token}`)
+          .expect(200);
+
+        const planetId = enterGame.body.player.location.planet.id as string;
+        const initialHex = enterGame.body.player.location.planet.hex_coords;
+
+        const joinUpdate = await emitAndWaitFor<
+          { planetId: string },
+          { playerId: string; planetId: string; q: number; r: number }
+        >(socket, PLANET_EVENTS.JOIN, { planetId }, PLANET_EVENTS.UPDATE);
+
+        expect(joinUpdate.planetId).toBe(planetId);
+        expect(joinUpdate.q).toBe(initialHex.q);
+        expect(joinUpdate.r).toBe(initialHex.r);
+
+        const moveUpdate = await emitAndWaitFor<
+          { planetId: string; q: number; r: number },
+          { playerId: string; planetId: string; q: number; r: number }
+        >(socket, PLANET_EVENTS.MOVE, { planetId, q: 1, r: 2 }, PLANET_EVENTS.UPDATE);
+
+        expect(moveUpdate).toEqual(
+          expect.objectContaining({
+            playerId: enterGame.body.player.id,
+            planetId,
+            q: 1,
+            r: 2,
+          }),
+        );
+
+        const player = await request(app.getHttpServer())
+          .get(apiPath(`/players/${auth.userId}`))
+          .expect(200);
+
+        expect(player.body.location.planet).toEqual(
+          expect.objectContaining({
+            id: planetId,
+            hex_coords: { q: 1, r: 2 },
+          }),
+        );
+        expect(player.body.galaxyX).toBeUndefined();
+        expect(player.body.currentPlanetId).toBeUndefined();
+        expect(moveUpdate.playerId).toBe(enterGame.body.player.id);
+      } finally {
+        socket.disconnect();
+      }
     }, 30_000);
-
-    afterAll(() => {
-      socket.disconnect();
-    });
-
-    it('PLANET_JOIN broadcasts hex position and PLANET_MOVE updates Redis-backed coords', async () => {
-      const { starId, planets } = await loadStarSystem(app, token);
-      const summary = planets.find((planet) => LANDABLE_TYPES.has(planet.type));
-      expect(summary).toBeDefined();
-
-      await request(app.getHttpServer())
-        .get(apiPath(`/planets/${summary!.id}`))
-        .query({ systemId: starId })
-        .expect(200);
-
-      const joinUpdate = await emitAndWaitFor<
-        { planetId: string },
-        { playerId: string; planetId: string; q: number; r: number }
-      >(socket, PLANET_EVENTS.JOIN, { planetId: summary!.id }, PLANET_EVENTS.UPDATE);
-
-      expect(joinUpdate.planetId).toBe(summary!.id);
-      expect(joinUpdate.q).toBeGreaterThanOrEqual(0);
-      expect(joinUpdate.q).toBeLessThan(summary!.radius);
-      expect(joinUpdate.r).toBeGreaterThanOrEqual(0);
-      expect(joinUpdate.r).toBeLessThan(summary!.radius);
-
-      const moveUpdate = await emitAndWaitFor<
-        { planetId: string; q: number; r: number },
-        { playerId: string; planetId: string; q: number; r: number }
-      >(
-        socket,
-        PLANET_EVENTS.MOVE,
-        { planetId: summary!.id, q: 1, r: 2 },
-        PLANET_EVENTS.UPDATE,
-      );
-
-      expect(moveUpdate).toEqual(
-        expect.objectContaining({
-          planetId: summary!.id,
-          q: 1,
-          r: 2,
-        }),
-      );
-    });
   });
 });
 

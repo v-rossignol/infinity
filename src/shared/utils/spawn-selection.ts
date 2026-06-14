@@ -24,10 +24,7 @@ export type PlanetSummary = {
   resources: Record<string, number>;
 };
 
-export const pickRandomStar = (
-  stars: StarData[],
-  random: () => number = Math.random,
-): StarData => {
+export const pickRandomStar = (stars: StarData[], random: () => number = Math.random): StarData => {
   if (stars.length === 0) {
     throw new NoStarsInCubeError();
   }

@@ -1,13 +1,7 @@
-export interface PlayerPosition {
-  galaxyX: number;
-  galaxyY: number;
-  galaxyZ: number;
-  currentPlanetId?: string | null;
-  planetX?: number;
-  planetY?: number;
-}
+import { PlayerLocation } from './player-location.interface';
 
-export interface PlayerState extends PlayerPosition {
+export interface PlayerState {
   id: string;
   userId: string;
+  location: PlayerLocation | null;
 }

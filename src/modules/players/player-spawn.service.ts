@@ -1,11 +1,7 @@
-import {
-  Injectable,
-  NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { SPAWN_CONSTANTS } from '../../shared/constants/spawn.constants';
-import { CubeData, CubeWithStars, StarData } from '../../shared/interfaces/galaxy.interface';
-import { localToGlobal } from '../../shared/utils/coordinates';
+import { CubeWithStars } from '../../shared/interfaces/galaxy.interface';
+import { buildPlanetLocation, isFreshy } from '../../shared/utils/player-location';
 import { NoEmptyCubeSlotError } from '../../shared/utils/spawn-cube-selection';
 import {
   NoRockyPlanetError,
@@ -14,35 +10,27 @@ import {
   pickRandomStar,
 } from '../../shared/utils/spawn-selection';
 import { CubeService } from '../galaxy/cube.service';
-import { StarService } from '../galaxy/star.service';
 import { StarSystemService } from '../galaxy/star-system.service';
-import { Planet } from '../planets/entities/planet.schema';
 import { PlanetsService } from '../planets/planets.service';
 import { Player } from './entities/player.entity';
-import { PlayersService } from './players.service';
+import { PlayerLocationService } from './player-location.service';
 
-export interface SpawnResult {
+export interface EnterGameResult {
   player: Player;
-  cube: CubeData;
-  star: StarData;
-  starSystemId: string;
-  planet: Planet;
-  surfacePosition: { q: number; r: number };
 }
 
 @Injectable()
 export class PlayerSpawnService {
   constructor(
-    private readonly playersService: PlayersService,
+    private readonly playerLocationService: PlayerLocationService,
     private readonly cubeService: CubeService,
     private readonly starSystemService: StarSystemService,
-    private readonly starService: StarService,
     private readonly planetsService: PlanetsService,
   ) {}
 
-  async bootstrapPlayer(player: Player): Promise<SpawnResult> {
-    if (player.currentPlanetId) {
-      return this.buildExistingSpawnResult(player);
+  async bootstrapPlayer(player: Player): Promise<EnterGameResult> {
+    if (!isFreshy(player)) {
+      return { player };
     }
 
     for (let attempt = 0; attempt < SPAWN_CONSTANTS.SPAWN_FULL_ATTEMPTS; attempt++) {
@@ -66,7 +54,7 @@ export class PlayerSpawnService {
     );
   }
 
-  private async allocateNewSpawn(player: Player): Promise<SpawnResult> {
+  private async allocateNewSpawn(player: Player): Promise<EnterGameResult> {
     const origin = await this.cubeService.pickSpawnCubeOrigin();
     const cubeWithStars = await this.cubeService.getOrCreateByOrigin(origin);
     return this.allocateInCube(player, cubeWithStars);
@@ -75,7 +63,7 @@ export class PlayerSpawnService {
   private async allocateInCube(
     player: Player,
     cubeWithStars: CubeWithStars,
-  ): Promise<SpawnResult> {
+  ): Promise<EnterGameResult> {
     const { cube, stars } = cubeWithStars;
     const triedStarIds = new Set<string>();
 
@@ -100,55 +88,20 @@ export class PlayerSpawnService {
       }
 
       const planet = await this.planetsService.getPlanet(summary.id, star.id);
-      const surfacePos = await this.planetsService.joinPlanet(player.id, planet._id);
-      const globalCoords = localToGlobal(cube.origin, star.local_coords);
+      const surfacePos = this.planetsService.rollRandomPosition(planet.radius);
 
-      const updatedPlayer = await this.playersService.updatePosition(player.id, {
-        galaxyX: globalCoords.x,
-        galaxyY: globalCoords.y,
-        galaxyZ: globalCoords.z,
-        currentPlanetId: planet._id,
-        planetX: surfacePos.q,
-        planetY: surfacePos.r,
+      const location = buildPlanetLocation({
+        cubeId: cube.id,
+        starSystemId: star.id,
+        planetId: planet._id,
+        hex_coords: surfacePos,
       });
 
-      return {
-        player: updatedPlayer,
-        cube,
-        star,
-        starSystemId: star.id,
-        planet,
-        surfacePosition: { q: surfacePos.q, r: surfacePos.r },
-      };
+      const updatedPlayer = await this.playerLocationService.setLocation(player.id, location);
+
+      return { player: updatedPlayer };
     }
 
     throw new NoRockyPlanetError();
-  }
-
-  private async buildExistingSpawnResult(player: Player): Promise<SpawnResult> {
-    const planetId = player.currentPlanetId;
-    if (!planetId) {
-      throw new NotFoundException('Player has no current planet');
-    }
-
-    const planet = await this.planetsService.getPlanet(planetId);
-    const star = await this.starService.findById(planet.starSystemId);
-    if (!star) {
-      throw new NotFoundException(`Star "${planet.starSystemId}" not found for spawned player`);
-    }
-
-    const cube = await this.cubeService.findById(star.cube_id);
-    if (!cube) {
-      throw new NotFoundException(`Cube "${star.cube_id}" not found for spawned player`);
-    }
-
-    return {
-      player,
-      cube,
-      star,
-      starSystemId: star.id,
-      planet,
-      surfacePosition: { q: player.planetX, r: player.planetY },
-    };
   }
 }

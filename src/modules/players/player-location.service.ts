@@ -1,0 +1,211 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import {
+  HexCoords,
+  LocationTransition,
+  PlayerLocation,
+  Vec2Local,
+  Vec3Local,
+} from '../../shared/interfaces/player-location.interface';
+import {
+  assertValidLocation,
+  buildCubeLocation,
+  buildPlanetLocation,
+  buildStarSystemLocation,
+  InvalidPlayerLocationError,
+  isPlayerLocationInCube,
+  isPlayerLocationInStarSystem,
+  isPlayerLocationOnPlanet,
+} from '../../shared/utils/player-location';
+import { Player } from './entities/player.entity';
+
+@Injectable()
+export class PlayerLocationService {
+  constructor(
+    @InjectRepository(Player)
+    private readonly playersRepository: Repository<Player>,
+  ) {}
+
+  async getLocation(playerId: string): Promise<PlayerLocation | null> {
+    const player = await this.findPlayerOrThrow(playerId);
+    return player.location;
+  }
+
+  async setLocation(playerId: string, location: PlayerLocation | null): Promise<Player> {
+    const player = await this.findPlayerOrThrow(playerId);
+
+    if (location === null) {
+      player.location = null;
+      return this.playersRepository.save(player);
+    }
+
+    return this.saveLocation(player, location);
+  }
+
+  async updateCubePosition(playerId: string, position: Vec3Local): Promise<Player> {
+    const player = await this.findPlayerOrThrow(playerId);
+
+    if (!player.location || !isPlayerLocationInCube(player.location)) {
+      throw new ConflictException('Player is not at cube depth');
+    }
+
+    const location = buildCubeLocation({
+      cubeId: player.location.cube.id,
+      position,
+    });
+
+    return this.saveLocation(player, location);
+  }
+
+  async updateStarSystemPosition(playerId: string, position: Vec2Local): Promise<Player> {
+    const player = await this.findPlayerOrThrow(playerId);
+
+    if (!player.location || !isPlayerLocationInStarSystem(player.location)) {
+      throw new ConflictException('Player is not at star system depth');
+    }
+
+    const location = buildStarSystemLocation({
+      cubeId: player.location.cube.id,
+      starSystemId: player.location.starSystem.id,
+      position,
+    });
+
+    return this.saveLocation(player, location);
+  }
+
+  async updatePlanetHex(playerId: string, hex_coords: HexCoords): Promise<Player> {
+    const player = await this.findPlayerOrThrow(playerId);
+
+    if (!player.location || !isPlayerLocationOnPlanet(player.location)) {
+      throw new ConflictException('Player is not at planet depth');
+    }
+
+    const location = buildPlanetLocation({
+      cubeId: player.location.cube.id,
+      starSystemId: player.location.starSystem.id,
+      planetId: player.location.planet.id,
+      hex_coords,
+    });
+
+    return this.saveLocation(player, location);
+  }
+
+  async transitionTo(playerId: string, transition: LocationTransition): Promise<Player> {
+    const player = await this.findPlayerOrThrow(playerId);
+
+    switch (transition.type) {
+      case 'enterStarSystem':
+        return this.transitionEnterStarSystem(player, transition);
+      case 'enterPlanet':
+        return this.transitionEnterPlanet(player, transition);
+      case 'leavePlanet':
+        return this.transitionLeavePlanet(player, transition);
+      case 'leaveStarSystem':
+        return this.transitionLeaveStarSystem(player, transition);
+      default: {
+        const exhaustive: never = transition;
+        throw new BadRequestException(`Unknown transition type: ${String(exhaustive)}`);
+      }
+    }
+  }
+
+  private transitionEnterStarSystem(
+    player: Player,
+    transition: Extract<LocationTransition, { type: 'enterStarSystem' }>,
+  ): Promise<Player> {
+    if (!player.location || !isPlayerLocationInCube(player.location)) {
+      throw new ConflictException('Player must be at cube depth to enter a star system');
+    }
+
+    const location = buildStarSystemLocation({
+      cubeId: player.location.cube.id,
+      starSystemId: transition.starSystemId,
+      position: transition.position,
+    });
+
+    return this.saveLocation(player, location);
+  }
+
+  private transitionEnterPlanet(
+    player: Player,
+    transition: Extract<LocationTransition, { type: 'enterPlanet' }>,
+  ): Promise<Player> {
+    if (!player.location || !isPlayerLocationInStarSystem(player.location)) {
+      throw new ConflictException('Player must be at star system depth to enter a planet');
+    }
+
+    const location = buildPlanetLocation({
+      cubeId: player.location.cube.id,
+      starSystemId: player.location.starSystem.id,
+      planetId: transition.planetId,
+      hex_coords: transition.hex_coords,
+    });
+
+    return this.saveLocation(player, location);
+  }
+
+  private transitionLeavePlanet(
+    player: Player,
+    transition: Extract<LocationTransition, { type: 'leavePlanet' }>,
+  ): Promise<Player> {
+    if (!player.location || !isPlayerLocationOnPlanet(player.location)) {
+      throw new ConflictException('Player must be at planet depth to leave a planet');
+    }
+
+    const location = buildStarSystemLocation({
+      cubeId: player.location.cube.id,
+      starSystemId: player.location.starSystem.id,
+      position: transition.position,
+    });
+
+    return this.saveLocation(player, location);
+  }
+
+  private transitionLeaveStarSystem(
+    player: Player,
+    transition: Extract<LocationTransition, { type: 'leaveStarSystem' }>,
+  ): Promise<Player> {
+    if (!player.location || !isPlayerLocationInStarSystem(player.location)) {
+      throw new ConflictException('Player must be at star system depth to leave a star system');
+    }
+
+    const location = buildCubeLocation({
+      cubeId: player.location.cube.id,
+      position: transition.position,
+    });
+
+    return this.saveLocation(player, location);
+  }
+
+  private async saveLocation(player: Player, location: PlayerLocation): Promise<Player> {
+    try {
+      assertValidLocation(location);
+    } catch (error) {
+      this.rethrowLocationError(error);
+    }
+
+    player.location = location;
+    return this.playersRepository.save(player);
+  }
+
+  private async findPlayerOrThrow(playerId: string): Promise<Player> {
+    const player = await this.playersRepository.findOneBy({ id: playerId });
+    if (!player) {
+      throw new NotFoundException(`Player ${playerId} not found`);
+    }
+    return player;
+  }
+
+  private rethrowLocationError(error: unknown): never {
+    if (error instanceof InvalidPlayerLocationError) {
+      throw new BadRequestException(error.message);
+    }
+    throw error;
+  }
+}

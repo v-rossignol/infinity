@@ -22,11 +22,7 @@ export interface SpawnCubeSelectionDeps {
 export const isSameOrigin = (a: Vec3, b: Vec3): boolean =>
   a.x === b.x && a.y === b.y && a.z === b.z;
 
-export const adjacentOrigin = (
-  origin: Vec3,
-  axis: SpawnAxis,
-  signedSteps: number,
-): Vec3 => {
+export const adjacentOrigin = (origin: Vec3, axis: SpawnAxis, signedSteps: number): Vec3 => {
   const delta = signedSteps * GALAXY_CONSTANTS.CUBE_SIZE_LY;
   return {
     x: axis === 'x' ? origin.x + delta : origin.x,

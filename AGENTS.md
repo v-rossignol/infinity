@@ -2,7 +2,7 @@
 
 Guidance for AI coding agents working on this repository.
 
-**Monorepo context:** [../AGENTS.md](../AGENTS.md) · **Known gaps:** [../documentation/TO-BE-FIXED.md](../documentation/TO-BE-FIXED.md) · **Server deferred work:** [documentation/TO-BE-FIXED.md](documentation/TO-BE-FIXED.md)
+**Monorepo context:** [../AGENTS.md](../AGENTS.md) · **Game rules:** [../contracts/game-rules.md](../contracts/game-rules.md) · **OpenAPI:** [auth](../contracts/auth-api.yaml) · [admin](../contracts/admin-api.yaml) · [game](../contracts/game-api.yaml) · **AsyncAPI:** [../contracts/asyncapi.yaml](../contracts/asyncapi.yaml) · **DTO schemas:** [../contracts/schemas/](../contracts/schemas/) · **Known gaps:** [../documentation/TO-BE-FIXED.md](../documentation/TO-BE-FIXED.md) · **Server deferred work:** [documentation/TO-BE-FIXED.md](documentation/TO-BE-FIXED.md)
 
 ---
 
@@ -134,6 +134,8 @@ See [rules/coding.md](rules/coding.md) for detailed coding standards and best pr
 - One **module** per domain feature inside `src/modules/`; register it in `app.module.ts`
 - Use **constructor injection** (NestJS DI) — never `new Service()` directly
 - Define **DTOs** with `class-validator` decorators; the global `ValidationPipe` is already active
+- Mirror request/response DTO shapes in [../contracts/schemas/](../contracts/schemas/) (JSON Schema) when adding or changing payloads
+- Mirror REST routes in the matching OpenAPI file ([auth-api.yaml](../contracts/auth-api.yaml), [admin-api.yaml](../contracts/admin-api.yaml), [game-api.yaml](../contracts/game-api.yaml)) and Socket.IO events in [asyncapi.yaml](../contracts/asyncapi.yaml)
 - Use **`@nestjs/config`** (`ConfigService`) for all environment access — never `process.env` directly in services
 
 ### TypeScript
@@ -191,7 +193,9 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/admin/statistics` | GET | JWT + admin |
 | `/infinity/players/me/enter-game` | POST | JWT |
 | `/infinity/players/:userId` | GET | public |
-| `/infinity/players/:playerId/position` | PATCH | public |
+| `/infinity/players/:userId` | GET | public |
+| `/infinity/players/me/location` | PATCH | JWT |
+| `/infinity/players/me/location/*` | POST/PATCH | JWT (transitions + depth moves) |
 | `/infinity/cubes/:x/:y/:z` | GET | JWT |
 | `/infinity/cubes/:x/:y/:z/stars` | GET | JWT |
 | `/infinity/cubes/by-name/:name` | GET | JWT |
@@ -201,7 +205,7 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/planets/:planetId` | GET | public |
 | `/infinity/resources/planet/:planetId` | GET | public |
 
-See [documentation/infinity-api.md](documentation/infinity-api.md) for request/response shapes and Socket.IO events. Admin routes are documented in [documentation/admin-api.md](documentation/admin-api.md).
+See [documentation/infinity-api.md](documentation/infinity-api.md) for narrative API details. REST OpenAPI: [auth-api.yaml](../contracts/auth-api.yaml), [admin-api.yaml](../contracts/admin-api.yaml), [game-api.yaml](../contracts/game-api.yaml). Socket.IO AsyncAPI: [asyncapi.yaml](../contracts/asyncapi.yaml). DTO JSON Schemas: [../contracts/schemas/](../contracts/schemas/). Admin routes are documented in [documentation/admin-api.md](documentation/admin-api.md).
 
 ---
 
@@ -211,5 +215,5 @@ See [documentation/infinity-api.md](documentation/infinity-api.md) for request/r
 - Do **not** commit `.env` — only `.env.example`
 - Do **not** enable `synchronize: true` in production TypeORM config
 - Do **not** expose `JWT_SECRET` in logs or responses
-- Redis integration is **partial** — cube cache is wired; session/position caching is not yet implemented
+- Redis integration is **partial** — cube cache is wired; session caching is not yet implemented
 - `deployment/dev/docker/docker-compose.yml` starts databases only, **not** the NestJS app

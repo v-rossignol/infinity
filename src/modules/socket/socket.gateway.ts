@@ -1,4 +1,9 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -14,6 +19,8 @@ import { StarService } from '../galaxy/star.service';
 import { PlanetsService } from '../planets/planets.service';
 import { GALAXY_EVENTS, getCubeRoomName } from './events/galaxy.events';
 import { PLANET_EVENTS } from './events/planet.events';
+import { SYSTEM_EVENTS } from './events/system.events';
+import { SocketPlayerAuthService } from './socket-player-auth.service';
 
 @WebSocketGateway({ namespace: '/' })
 export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -25,9 +32,15 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly planetsService: PlanetsService,
     private readonly cubeService: CubeService,
     private readonly starService: StarService,
+    private readonly socketPlayerAuthService: SocketPlayerAuthService,
   ) {}
 
-  handleConnection(client: Socket) {
+  async handleConnection(client: Socket) {
+    try {
+      await this.socketPlayerAuthService.attachPlayer(client);
+    } catch {
+      // Anonymous connections remain allowed for read-only galaxy requests.
+    }
     console.log(`Client connected: ${client.id}`);
   }
 
@@ -36,9 +49,19 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage(GALAXY_EVENTS.MOVE)
-  handleGalaxyMove(client: Socket, payload: { x: number; y: number; z: number }) {
-    this.galaxyService.handlePlayerMove(client.id, payload);
-    this.server.emit(GALAXY_EVENTS.UPDATE, { playerId: client.id, ...payload });
+  async handleGalaxyMove(client: Socket, payload: { x: number; y: number; z: number }) {
+    try {
+      if (!this.isValidPosition(payload)) {
+        this.emitGalaxyError(client, GALAXY_EVENTS.MOVE, 'x, y, and z are required numeric fields', 400);
+        return;
+      }
+
+      const playerId = await this.resolvePlayerId(client);
+      await this.galaxyService.handlePlayerMove(playerId, payload);
+      this.server.emit(GALAXY_EVENTS.UPDATE, { playerId, ...payload });
+    } catch (error) {
+      this.handleGalaxyHandlerError(client, GALAXY_EVENTS.MOVE, error);
+    }
   }
 
   @SubscribeMessage(GALAXY_EVENTS.REQUEST_CUBE)
@@ -91,10 +114,11 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return;
       }
 
-      const position = await this.planetsService.joinPlanet(client.id, payload.planetId);
+      const playerId = await this.resolvePlayerId(client);
+      const position = await this.planetsService.joinPlanet(playerId, payload.planetId);
       await client.join(payload.planetId);
       this.server.to(payload.planetId).emit(PLANET_EVENTS.UPDATE, {
-        playerId: client.id,
+        playerId,
         ...position,
       });
     } catch (error) {
@@ -115,7 +139,11 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage(PLANET_EVENTS.MOVE)
   async handlePlanetMove(client: Socket, payload: { planetId: string; q: number; r: number }) {
     try {
-      if (!payload?.planetId || !this.isValidHexCoord(payload.q) || !this.isValidHexCoord(payload.r)) {
+      if (
+        !payload?.planetId ||
+        !this.isValidHexCoord(payload.q) ||
+        !this.isValidHexCoord(payload.r)
+      ) {
         this.emitPlanetError(
           client,
           PLANET_EVENTS.MOVE,
@@ -125,14 +153,36 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return;
       }
 
-      const position = await this.planetsService.handlePlayerMove(client.id, payload);
+      const playerId = await this.resolvePlayerId(client);
+      const position = await this.planetsService.handlePlayerMove(playerId, payload);
       this.server.to(payload.planetId).emit(PLANET_EVENTS.UPDATE, {
-        playerId: client.id,
+        playerId,
         ...position,
       });
     } catch (error) {
       this.handlePlanetHandlerError(client, PLANET_EVENTS.MOVE, error);
     }
+  }
+
+  @SubscribeMessage(SYSTEM_EVENTS.MOVE)
+  async handleSystemMove(client: Socket, payload: { x: number; y: number }) {
+    try {
+      if (!this.isValidSystemPosition(payload)) {
+        this.emitSystemError(client, SYSTEM_EVENTS.MOVE, 'x and y are required numeric fields', 400);
+        return;
+      }
+
+      const playerId = await this.resolvePlayerId(client);
+      await this.galaxyService.handleSystemMove(playerId, payload);
+      this.server.emit(SYSTEM_EVENTS.UPDATE, { playerId, ...payload });
+    } catch (error) {
+      this.handleSystemHandlerError(client, SYSTEM_EVENTS.MOVE, error);
+    }
+  }
+
+  private async resolvePlayerId(client: Socket): Promise<string> {
+    await this.socketPlayerAuthService.attachPlayer(client);
+    return this.socketPlayerAuthService.getPlayerId(client);
   }
 
   private isValidPosition(position: { x: number; y: number; z: number }): boolean {
@@ -143,6 +193,12 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private isValidHexCoord(value: number): boolean {
     return typeof value === 'number' && Number.isFinite(value);
+  }
+
+  private isValidSystemPosition(position: { x: number; y: number }): boolean {
+    return [position?.x, position?.y].every(
+      (value) => typeof value === 'number' && Number.isFinite(value),
+    );
   }
 
   private emitGalaxyError(
@@ -163,7 +219,28 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.emit(PLANET_EVENTS.ERROR, { event, message, statusCode });
   }
 
+  private emitSystemError(
+    client: Socket,
+    event: string,
+    message: string,
+    statusCode: number,
+  ): void {
+    client.emit(SYSTEM_EVENTS.ERROR, { event, message, statusCode });
+  }
+
   private handleGalaxyHandlerError(client: Socket, event: string, error: unknown): void {
+    if (error instanceof UnauthorizedException) {
+      const message = typeof error.message === 'string' ? error.message : 'Unauthorized';
+      this.emitGalaxyError(client, event, message, 401);
+      return;
+    }
+
+    if (error instanceof ConflictException) {
+      const message = typeof error.message === 'string' ? error.message : 'Conflict';
+      this.emitGalaxyError(client, event, message, 409);
+      return;
+    }
+
     if (error instanceof BadRequestException) {
       const message = typeof error.message === 'string' ? error.message : 'Bad Request';
       this.emitGalaxyError(client, event, message, 400);
@@ -181,6 +258,18 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private handlePlanetHandlerError(client: Socket, event: string, error: unknown): void {
+    if (error instanceof UnauthorizedException) {
+      const message = typeof error.message === 'string' ? error.message : 'Unauthorized';
+      this.emitPlanetError(client, event, message, 401);
+      return;
+    }
+
+    if (error instanceof ConflictException) {
+      const message = typeof error.message === 'string' ? error.message : 'Conflict';
+      this.emitPlanetError(client, event, message, 409);
+      return;
+    }
+
     if (error instanceof BadRequestException) {
       const message = typeof error.message === 'string' ? error.message : 'Bad Request';
       this.emitPlanetError(client, event, message, 400);
@@ -195,5 +284,34 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     console.error(`Planet socket handler error (${event}):`, error);
     this.emitPlanetError(client, event, 'Internal server error', 500);
+  }
+
+  private handleSystemHandlerError(client: Socket, event: string, error: unknown): void {
+    if (error instanceof UnauthorizedException) {
+      const message = typeof error.message === 'string' ? error.message : 'Unauthorized';
+      this.emitSystemError(client, event, message, 401);
+      return;
+    }
+
+    if (error instanceof ConflictException) {
+      const message = typeof error.message === 'string' ? error.message : 'Conflict';
+      this.emitSystemError(client, event, message, 409);
+      return;
+    }
+
+    if (error instanceof BadRequestException) {
+      const message = typeof error.message === 'string' ? error.message : 'Bad Request';
+      this.emitSystemError(client, event, message, 400);
+      return;
+    }
+
+    if (error instanceof NotFoundException) {
+      const message = typeof error.message === 'string' ? error.message : 'Not Found';
+      this.emitSystemError(client, event, message, 404);
+      return;
+    }
+
+    console.error(`System socket handler error (${event}):`, error);
+    this.emitSystemError(client, event, 'Internal server error', 500);
   }
 }

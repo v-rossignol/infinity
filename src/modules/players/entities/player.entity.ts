@@ -8,6 +8,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { User } from '../../auth/entities/user.entity';
+import { PlayerLocation } from '../../../shared/interfaces/player-location.interface';
 
 @Entity()
 export class Player {
@@ -21,23 +22,8 @@ export class Player {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @Column({ default: 0 })
-  galaxyX: number;
-
-  @Column({ default: 0 })
-  galaxyY: number;
-
-  @Column({ default: 0 })
-  galaxyZ: number;
-
-  @Column({ type: 'varchar', nullable: true })
-  currentPlanetId: string | null;
-
-  @Column({ default: 0 })
-  planetX: number;
-
-  @Column({ default: 0 })
-  planetY: number;
+  @Column({ type: 'jsonb', nullable: true, default: null })
+  location: PlayerLocation | null;
 
   @CreateDateColumn()
   createdAt: Date;

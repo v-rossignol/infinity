@@ -7,7 +7,11 @@ import { StarService } from '../galaxy/star.service';
 import { PlanetsService } from '../planets/planets.service';
 import { GALAXY_EVENTS } from './events/galaxy.events';
 import { PLANET_EVENTS } from './events/planet.events';
+import { SYSTEM_EVENTS } from './events/system.events';
 import { SocketGateway } from './socket.gateway';
+import { SocketPlayerAuthService } from './socket-player-auth.service';
+
+const playerId = 'player-uuid';
 
 describe('SocketGateway galaxy events', () => {
   let gateway: SocketGateway;
@@ -44,13 +48,20 @@ describe('SocketGateway galaxy events', () => {
     to: jest.fn().mockReturnThis(),
   };
 
-  const mockGalaxyService = { handlePlayerMove: jest.fn() };
+  const mockGalaxyService = {
+    handlePlayerMove: jest.fn(),
+    handleSystemMove: jest.fn(),
+  };
   const mockPlanetsService = {
     joinPlanet: jest.fn(),
     handlePlayerMove: jest.fn(),
   };
   const mockCubeService = { getOrCreateByOrigin: jest.fn() };
   const mockStarService = { findById: jest.fn() };
+  const mockSocketPlayerAuthService = {
+    attachPlayer: jest.fn().mockResolvedValue(undefined),
+    getPlayerId: jest.fn().mockReturnValue(playerId),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -62,6 +73,7 @@ describe('SocketGateway galaxy events', () => {
         { provide: PlanetsService, useValue: mockPlanetsService },
         { provide: CubeService, useValue: mockCubeService },
         { provide: StarService, useValue: mockStarService },
+        { provide: SocketPlayerAuthService, useValue: mockSocketPlayerAuthService },
       ],
     }).compile();
 
@@ -125,19 +137,21 @@ describe('SocketGateway galaxy events', () => {
     });
   });
 
-  it('GALAXY_MOVE remains separate from cube requests', () => {
-    gateway.handleGalaxyMove(mockClient, { x: 120.5, y: -45.2, z: 10 });
+  it('GALAXY_MOVE persists cube position and broadcasts with player id', async () => {
+    mockGalaxyService.handlePlayerMove.mockResolvedValue(undefined);
 
-    expect(mockGalaxyService.handlePlayerMove).toHaveBeenCalledWith('socket-1', {
-      x: 120.5,
-      y: -45.2,
-      z: 10,
+    await gateway.handleGalaxyMove(mockClient, { x: 1.5, y: 2.5, z: 3.5 });
+
+    expect(mockGalaxyService.handlePlayerMove).toHaveBeenCalledWith(playerId, {
+      x: 1.5,
+      y: 2.5,
+      z: 3.5,
     });
     expect(mockServer.emit).toHaveBeenCalledWith(GALAXY_EVENTS.UPDATE, {
-      playerId: 'socket-1',
-      x: 120.5,
-      y: -45.2,
-      z: 10,
+      playerId,
+      x: 1.5,
+      y: 2.5,
+      z: 3.5,
     });
     expect(mockCubeService.getOrCreateByOrigin).not.toHaveBeenCalled();
   });
@@ -163,6 +177,11 @@ describe('SocketGateway planet events', () => {
     handlePlayerMove: jest.fn(),
   };
 
+  const mockSocketPlayerAuthService = {
+    attachPlayer: jest.fn().mockResolvedValue(undefined),
+    getPlayerId: jest.fn().mockReturnValue(playerId),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -173,6 +192,7 @@ describe('SocketGateway planet events', () => {
         { provide: PlanetsService, useValue: mockPlanetsService },
         { provide: CubeService, useValue: { getOrCreateByOrigin: jest.fn() } },
         { provide: StarService, useValue: { findById: jest.fn() } },
+        { provide: SocketPlayerAuthService, useValue: mockSocketPlayerAuthService },
       ],
     }).compile();
 
@@ -190,13 +210,13 @@ describe('SocketGateway planet events', () => {
     await gateway.handlePlanetJoin(mockClient, { planetId: 'alpha-centauri_planet_0' });
 
     expect(mockPlanetsService.joinPlanet).toHaveBeenCalledWith(
-      'socket-1',
+      playerId,
       'alpha-centauri_planet_0',
     );
     expect(mockClient.join).toHaveBeenCalledWith('alpha-centauri_planet_0');
     expect(mockServer.to).toHaveBeenCalledWith('alpha-centauri_planet_0');
     expect(mockServer.emit).toHaveBeenCalledWith(PLANET_EVENTS.UPDATE, {
-      playerId: 'socket-1',
+      playerId,
       planetId: 'alpha-centauri_planet_0',
       q: 2,
       r: 3,
@@ -222,14 +242,14 @@ describe('SocketGateway planet events', () => {
       r: 1,
     });
 
-    expect(mockPlanetsService.handlePlayerMove).toHaveBeenCalledWith('socket-1', {
+    expect(mockPlanetsService.handlePlayerMove).toHaveBeenCalledWith(playerId, {
       planetId: 'alpha-centauri_planet_0',
       q: 4,
       r: 1,
     });
     expect(mockServer.to).toHaveBeenCalledWith('alpha-centauri_planet_0');
     expect(mockServer.emit).toHaveBeenCalledWith(PLANET_EVENTS.UPDATE, {
-      playerId: 'socket-1',
+      playerId,
       planetId: 'alpha-centauri_planet_0',
       q: 4,
       r: 1,
@@ -237,3 +257,59 @@ describe('SocketGateway planet events', () => {
   });
 });
 
+describe('SocketGateway system events', () => {
+  let gateway: SocketGateway;
+
+  const mockClient = {
+    id: 'socket-1',
+    join: jest.fn().mockResolvedValue(undefined),
+    leave: jest.fn().mockResolvedValue(undefined),
+    emit: jest.fn(),
+  } as unknown as Socket;
+
+  const mockServer = {
+    emit: jest.fn(),
+    to: jest.fn().mockReturnThis(),
+  };
+
+  const mockGalaxyService = {
+    handlePlayerMove: jest.fn(),
+    handleSystemMove: jest.fn(),
+  };
+
+  const mockSocketPlayerAuthService = {
+    attachPlayer: jest.fn().mockResolvedValue(undefined),
+    getPlayerId: jest.fn().mockReturnValue(playerId),
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        SocketGateway,
+        { provide: GalaxyService, useValue: mockGalaxyService },
+        { provide: PlanetsService, useValue: { joinPlanet: jest.fn(), handlePlayerMove: jest.fn() } },
+        { provide: CubeService, useValue: { getOrCreateByOrigin: jest.fn() } },
+        { provide: StarService, useValue: { findById: jest.fn() } },
+        { provide: SocketPlayerAuthService, useValue: mockSocketPlayerAuthService },
+      ],
+    }).compile();
+
+    gateway = module.get(SocketGateway);
+    gateway.server = mockServer as never;
+  });
+
+  it('SYSTEM_MOVE persists system position and broadcasts SYSTEM_UPDATE', async () => {
+    mockGalaxyService.handleSystemMove.mockResolvedValue(undefined);
+
+    await gateway.handleSystemMove(mockClient, { x: 10, y: 20 });
+
+    expect(mockGalaxyService.handleSystemMove).toHaveBeenCalledWith(playerId, { x: 10, y: 20 });
+    expect(mockServer.emit).toHaveBeenCalledWith(SYSTEM_EVENTS.UPDATE, {
+      playerId,
+      x: 10,
+      y: 20,
+    });
+  });
+});

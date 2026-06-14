@@ -43,17 +43,19 @@ Admin routes are mounted at **`/infinity/admin/*`**. The global prefix `/infinit
 
 | Layer | Guard | Behavior |
 |-------|-------|----------|
-| JWT | `JwtAuthGuard` | Validates `Authorization: Bearer <access_token>` |
+| JWT | `JwtAuthGuard` | Validates cookie `infinity_token` or `Authorization: Bearer <jwt>` |
 | Admin role | `AdminGuard` | Requires `role: "admin"` on the authenticated user |
 
 Both guards are applied at the controller level on `AdminController`, so every route under `/infinity/admin/*` inherits them.
 
 ### Obtaining an admin token
 
+> **Cosmos Governance note (2026-06):** `POST /infinity/auth/login` no longer returns `access_token` in the JSON body. The JWT is set in the `infinity_token` httpOnly cookie (Stellar Gate contract). **Cosmos Governance** still expects `access_token` in JSON and stores it in `sessionStorage` — admin login is broken until the client is realigned ([TO-BE-FIXED §10](../../documentation/TO-BE-FIXED.md)). For manual API testing, extract the JWT from the `Set-Cookie` header or use a tool that sends the cookie, then pass `Authorization: Bearer <jwt>` on admin routes.
+
 1. Configure default admin credentials in `.env` (see [Default admin bootstrap](#default-admin-bootstrap)).
 2. Start the server so the default admin account is created if it does not exist.
 3. Log in with `POST /infinity/auth/login` using admin credentials.
-4. Use the returned `access_token` on admin requests.
+4. Use the session JWT on admin requests (`Authorization: Bearer <jwt>` or cookie, depending on client).
 
 **Login request**
 
@@ -73,9 +75,15 @@ Content-Type: application/json
 
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "user": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "username": "admin",
+    "email": "admin@example.com"
+  }
 }
 ```
+
+**Cookie:** `Set-Cookie: infinity_token=<jwt>; HttpOnly; Path=/infinity; …`
 
 The JWT payload includes `sub` (user id), `username`, and `role`. Tokens issued before the `role` field was added will not pass `AdminGuard`.
 
