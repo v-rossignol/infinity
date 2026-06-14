@@ -18,7 +18,7 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalPipes(new ValidationPipe({ transform: true }));
   app.useWebSocketAdapter(new SocketAdapter(app));
 
   const port = parseInt(configService.get<string>('PORT', '4000'), 10);

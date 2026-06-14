@@ -189,7 +189,7 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/auth/register` | POST | public |
 | `/infinity/auth/login` | POST | public |
 | `/infinity/admin/me` | GET | JWT + admin |
-| `/infinity/admin/users` | GET | JWT + admin |
+| `/infinity/admin/users` | GET | JWT + admin | List users (paginated: `?page=&count=`) |
 | `/infinity/admin/statistics` | GET | JWT + admin |
 | `/infinity/players/me/enter-game` | POST | JWT |
 | `/infinity/players/:userId` | GET | public |

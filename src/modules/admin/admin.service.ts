@@ -7,8 +7,20 @@ import { Cube } from '../galaxy/entities/cube.schema';
 import { StarSystem } from '../galaxy/entities/star-system.schema';
 import { Planet } from '../planets/entities/planet.schema';
 import { User } from '../auth/entities/user.entity';
+import {
+  DEFAULT_LIST_USERS_COUNT,
+  DEFAULT_LIST_USERS_PAGE,
+  ListUsersQueryDto,
+} from './dto/list-users-query.dto';
 
 export type AdminUserSummary = Pick<User, 'id' | 'username' | 'email' | 'role' | 'createdAt'>;
+
+export interface PaginatedAdminUsers {
+  items: AdminUserSummary[];
+  total: number;
+  page: number;
+  count: number;
+}
 
 export interface AdminStatistics {
   users: number;
@@ -43,11 +55,18 @@ export class AdminService {
     return user;
   }
 
-  async listUsers(): Promise<AdminUserSummary[]> {
-    return this.usersRepository.find({
+  async listUsers(query: ListUsersQueryDto = {}): Promise<PaginatedAdminUsers> {
+    const page = query.page ?? DEFAULT_LIST_USERS_PAGE;
+    const count = query.count ?? DEFAULT_LIST_USERS_COUNT;
+
+    const [items, total] = await this.usersRepository.findAndCount({
       select: ['id', 'username', 'email', 'role', 'createdAt'],
       order: { createdAt: 'ASC' },
+      skip: (page - 1) * count,
+      take: count,
     });
+
+    return { items, total, page, count };
   }
 
   async getStatistics(): Promise<AdminStatistics> {

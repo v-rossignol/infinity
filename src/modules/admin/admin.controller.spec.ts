@@ -49,12 +49,18 @@ describe('AdminController', () => {
   });
 
   it('lists users', async () => {
-    mockAdminService.listUsers.mockResolvedValue([adminUser]);
+    const paginatedUsers = {
+      items: [adminUser],
+      total: 1,
+      page: 1,
+      count: 20,
+    };
+    mockAdminService.listUsers.mockResolvedValue(paginatedUsers);
 
-    const result = await controller.listUsers();
+    const result = await controller.listUsers({ page: 1, count: 20 });
 
-    expect(mockAdminService.listUsers).toHaveBeenCalled();
-    expect(result).toEqual([adminUser]);
+    expect(mockAdminService.listUsers).toHaveBeenCalledWith({ page: 1, count: 20 });
+    expect(result).toEqual(paginatedUsers);
   });
 
   it('returns admin statistics', async () => {

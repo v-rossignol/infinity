@@ -14,6 +14,7 @@ describe('AdminService', () => {
   const usersRepository = {
     findOne: jest.fn(),
     find: jest.fn(),
+    findAndCount: jest.fn(),
     count: jest.fn(),
   };
 
@@ -76,7 +77,7 @@ describe('AdminService', () => {
     await expect(service.getUserById('missing-id')).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('lists users without passwords', async () => {
+  it('lists users without passwords using default pagination', async () => {
     const users = [
       {
         id: 'user-id',
@@ -86,12 +87,45 @@ describe('AdminService', () => {
         createdAt: new Date(),
       },
     ];
-    usersRepository.find.mockResolvedValue(users);
+    usersRepository.findAndCount.mockResolvedValue([users, 1]);
 
-    await expect(service.listUsers()).resolves.toEqual(users);
-    expect(usersRepository.find).toHaveBeenCalledWith({
+    await expect(service.listUsers()).resolves.toEqual({
+      items: users,
+      total: 1,
+      page: 1,
+      count: 20,
+    });
+    expect(usersRepository.findAndCount).toHaveBeenCalledWith({
       select: ['id', 'username', 'email', 'role', 'createdAt'],
       order: { createdAt: 'ASC' },
+      skip: 0,
+      take: 20,
+    });
+  });
+
+  it('lists users with custom page and count', async () => {
+    const users = [
+      {
+        id: 'user-id-2',
+        username: 'pilot',
+        email: 'pilot@example.com',
+        role: 'user',
+        createdAt: new Date(),
+      },
+    ];
+    usersRepository.findAndCount.mockResolvedValue([users, 42]);
+
+    await expect(service.listUsers({ page: 3, count: 10 })).resolves.toEqual({
+      items: users,
+      total: 42,
+      page: 3,
+      count: 10,
+    });
+    expect(usersRepository.findAndCount).toHaveBeenCalledWith({
+      select: ['id', 'username', 'email', 'role', 'createdAt'],
+      order: { createdAt: 'ASC' },
+      skip: 20,
+      take: 10,
     });
   });
 
