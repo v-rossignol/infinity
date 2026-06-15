@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../../shared/interfaces/authenticated-user.interface';
 import { AdminService } from './admin.service';
 import { ListPlanetsQueryDto } from './dto/list-planets-query.dto';
+import { ListSystemsQueryDto } from './dto/list-systems-query.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
 
 type AuthenticatedRequest = Request & {
@@ -29,6 +30,11 @@ export class AdminController {
   @Get('planets')
   listPlanets(@Query() query: ListPlanetsQueryDto) {
     return this.adminService.listPlanets(query);
+  }
+
+  @Get('systems')
+  listStarSystems(@Query() query: ListSystemsQueryDto) {
+    return this.adminService.listStarSystems(query);
   }
 
   @Get('statistics')

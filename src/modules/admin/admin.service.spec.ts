@@ -24,6 +24,7 @@ describe('AdminService', () => {
 
   const starSystemModel = {
     countDocuments: jest.fn(),
+    find: jest.fn(),
   };
 
   const planetModel = {
@@ -191,6 +192,79 @@ describe('AdminService', () => {
 
     await expect(service.listPlanets({ page: 3, count: 10 })).resolves.toEqual({
       items: planets,
+      total: 42,
+      page: 3,
+      count: 10,
+    });
+    expect(skip).toHaveBeenCalledWith(20);
+    expect(limit).toHaveBeenCalledWith(10);
+  });
+
+  it('lists star systems using default pagination', async () => {
+    const systems = [
+      {
+        _id: 'system-1',
+        name: 'Alpha Centauri',
+        planets: [
+          {
+            id: 'planet-1',
+            name: 'Terra',
+            x: 0,
+            y: 0,
+            radius: 10,
+            type: 'rocky',
+            resources: { iron: 0.5 },
+          },
+        ],
+        visited: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+    const lean = jest.fn().mockResolvedValue(systems);
+    const limit = jest.fn().mockReturnValue({ lean });
+    const skip = jest.fn().mockReturnValue({ limit });
+    const sort = jest.fn().mockReturnValue({ skip });
+    const select = jest.fn().mockReturnValue({ sort });
+    starSystemModel.find.mockReturnValue({ select });
+    starSystemModel.countDocuments.mockResolvedValue(1);
+
+    await expect(service.listStarSystems()).resolves.toEqual({
+      items: systems,
+      total: 1,
+      page: 1,
+      count: 20,
+    });
+    expect(starSystemModel.find).toHaveBeenCalledWith();
+    expect(select).toHaveBeenCalledWith('_id name planets visited createdAt updatedAt');
+    expect(sort).toHaveBeenCalledWith({ createdAt: 1 });
+    expect(skip).toHaveBeenCalledWith(0);
+    expect(limit).toHaveBeenCalledWith(20);
+    expect(lean).toHaveBeenCalled();
+    expect(starSystemModel.countDocuments).toHaveBeenCalled();
+  });
+
+  it('lists star systems with custom page and count', async () => {
+    const systems = [
+      {
+        _id: 'system-2',
+        name: 'Proxima',
+        planets: [],
+        visited: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+    const lean = jest.fn().mockResolvedValue(systems);
+    const limit = jest.fn().mockReturnValue({ lean });
+    const skip = jest.fn().mockReturnValue({ limit });
+    const sort = jest.fn().mockReturnValue({ skip });
+    const select = jest.fn().mockReturnValue({ sort });
+    starSystemModel.find.mockReturnValue({ select });
+    starSystemModel.countDocuments.mockResolvedValue(42);
+
+    await expect(service.listStarSystems({ page: 3, count: 10 })).resolves.toEqual({
+      items: systems,
       total: 42,
       page: 3,
       count: 10,

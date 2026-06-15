@@ -13,6 +13,11 @@ import {
   ListPlanetsQueryDto,
 } from './dto/list-planets-query.dto';
 import {
+  DEFAULT_LIST_SYSTEMS_COUNT,
+  DEFAULT_LIST_SYSTEMS_PAGE,
+  ListSystemsQueryDto,
+} from './dto/list-systems-query.dto';
+import {
   DEFAULT_LIST_USERS_COUNT,
   DEFAULT_LIST_USERS_PAGE,
   ListUsersQueryDto,
@@ -37,6 +42,21 @@ export type AdminPlanetSummary = Pick<
 
 export interface PaginatedAdminPlanets {
   items: AdminPlanetSummary[];
+  total: number;
+  page: number;
+  count: number;
+}
+
+export type AdminStarSystemSummary = Pick<
+  StarSystem,
+  '_id' | 'name' | 'planets' | 'visited'
+> & {
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export interface PaginatedAdminStarSystems {
+  items: AdminStarSystemSummary[];
   total: number;
   page: number;
   count: number;
@@ -103,6 +123,25 @@ export class AdminService {
         .limit(count)
         .lean<AdminPlanetSummary[]>(),
       this.planetModel.countDocuments(),
+    ]);
+
+    return { items, total, page, count };
+  }
+
+  async listStarSystems(query: ListSystemsQueryDto = {}): Promise<PaginatedAdminStarSystems> {
+    const page = query.page ?? DEFAULT_LIST_SYSTEMS_PAGE;
+    const count = query.count ?? DEFAULT_LIST_SYSTEMS_COUNT;
+    const skip = (page - 1) * count;
+
+    const [items, total] = await Promise.all([
+      this.starSystemModel
+        .find()
+        .select('_id name planets visited createdAt updatedAt')
+        .sort({ createdAt: 1 })
+        .skip(skip)
+        .limit(count)
+        .lean<AdminStarSystemSummary[]>(),
+      this.starSystemModel.countDocuments(),
     ]);
 
     return { items, total, page, count };

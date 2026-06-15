@@ -191,6 +191,7 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/admin/me` | GET | JWT + admin |
 | `/infinity/admin/users` | GET | JWT + admin | List users (paginated: `?page=&count=`) |
 | `/infinity/admin/planets` | GET | JWT + admin | List planets (paginated: `?page=&count=`) |
+| `/infinity/admin/systems` | GET | JWT + admin | List star systems (paginated: `?page=&count=`) |
 | `/infinity/admin/statistics` | GET | JWT + admin |
 | `/infinity/players/me/enter-game` | POST | JWT |
 | `/infinity/players/:userId` | GET | public |
