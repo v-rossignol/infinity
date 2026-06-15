@@ -47,7 +47,7 @@ describe('StarSystemService', () => {
   });
 
   it('returns an existing star system without regenerating', async () => {
-    const existing = { _id: 'star-uuid', name: 'Alpha kikyhk', planets: [], visited: true };
+    const existing = { _id: 'star-uuid', name: 'Alpha Ces Luf Top', planets: [], visited: true };
     mockFindById.mockReturnValue({
       exec: jest.fn().mockResolvedValue(existing),
     });
@@ -63,12 +63,12 @@ describe('StarSystemService', () => {
     });
     mockStarService.findById.mockResolvedValue({
       id: 'star-uuid',
-      name: 'Alpha kikyhk',
+      name: 'Alpha Ces Luf Top',
       local_coords: { x: 1, y: 2, z: 3 },
       cube_id: 'cube-uuid',
       properties: { type: 'yellow' },
     });
-    mockSave.mockResolvedValue({ _id: 'star-uuid', name: 'Alpha kikyhk' });
+    mockSave.mockResolvedValue({ _id: 'star-uuid', name: 'Alpha Ces Luf Top' });
 
     const result = await service.generateStarSystem('star-uuid');
 
@@ -77,7 +77,9 @@ describe('StarSystemService', () => {
     expect(capturedDoc).toBeDefined();
     expect(capturedDoc).not.toHaveProperty('stars');
     expect(capturedDoc?.planets).toEqual(expect.any(Array));
-    expect(result).toEqual({ _id: 'star-uuid', name: 'Alpha kikyhk' });
+    const planets = capturedDoc?.planets as Array<{ name: string }> | undefined;
+    expect(planets?.[0]?.name).toBe('Alpha CesLufTop I');
+    expect(result).toEqual({ _id: 'star-uuid', name: 'Alpha Ces Luf Top' });
   });
 
   it('throws when generating a system for an unknown star', async () => {

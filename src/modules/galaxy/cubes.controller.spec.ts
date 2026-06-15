@@ -10,14 +10,14 @@ describe('CubesController', () => {
   const payload = {
     cube: {
       id: '550e8400-e29b-41d4-a716-446655440000',
-      name: 'kikyhk',
+      name: 'Ces Luf Top',
       origin: { x: 10, y: 10, z: 10 },
       star_ids: ['661e8400-e29b-41d4-a716-446655440001'],
     },
     stars: [
       {
         id: '661e8400-e29b-41d4-a716-446655440001',
-        name: 'Alpha kikyhk',
+        name: 'Alpha Ces Luf Top',
         local_coords: { x: 1.0, y: 2.0, z: 3.0 },
         cube_id: '550e8400-e29b-41d4-a716-446655440000',
         properties: { type: 'yellow' as const },
@@ -64,7 +64,7 @@ describe('CubesController', () => {
   it('returns cube by name when found', async () => {
     mockCubeService.findByName.mockResolvedValue(payload);
 
-    await expect(controller.findByName('kikyhk')).resolves.toEqual(payload);
+    await expect(controller.findByName('Ces Luf Top')).resolves.toEqual(payload);
   });
 
   it('throws NotFoundException when cube name is missing', async () => {

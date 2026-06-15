@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -23,13 +24,22 @@ import {
   isPlayerLocationInStarSystem,
   isPlayerLocationOnPlanet,
 } from '../../shared/utils/player-location';
+import { StarService } from '../galaxy/star.service';
+import { StarSystemService } from '../galaxy/star-system.service';
+import { parseStarSystemIdFromPlanetId } from '../../shared/utils/planet-id';
 import { Player } from './entities/player.entity';
+
+export interface LocationTransitionOptions {
+  adminBypass?: boolean;
+}
 
 @Injectable()
 export class PlayerLocationService {
   constructor(
     @InjectRepository(Player)
     private readonly playersRepository: Repository<Player>,
+    private readonly starService: StarService,
+    private readonly starSystemService: StarSystemService,
   ) {}
 
   async getLocation(playerId: string): Promise<PlayerLocation | null> {
@@ -96,14 +106,18 @@ export class PlayerLocationService {
     return this.saveLocation(player, location);
   }
 
-  async transitionTo(playerId: string, transition: LocationTransition): Promise<Player> {
+  async transitionTo(
+    playerId: string,
+    transition: LocationTransition,
+    options?: LocationTransitionOptions,
+  ): Promise<Player> {
     const player = await this.findPlayerOrThrow(playerId);
 
     switch (transition.type) {
       case 'enterStarSystem':
         return this.transitionEnterStarSystem(player, transition);
       case 'enterPlanet':
-        return this.transitionEnterPlanet(player, transition);
+        return this.transitionEnterPlanet(player, transition, options);
       case 'leavePlanet':
         return this.transitionLeavePlanet(player, transition);
       case 'leaveStarSystem':
@@ -135,7 +149,12 @@ export class PlayerLocationService {
   private transitionEnterPlanet(
     player: Player,
     transition: Extract<LocationTransition, { type: 'enterPlanet' }>,
+    options?: LocationTransitionOptions,
   ): Promise<Player> {
+    if (options?.adminBypass) {
+      return this.adminRelocateToPlanet(player, transition);
+    }
+
     if (!player.location || !isPlayerLocationInStarSystem(player.location)) {
       throw new ConflictException('Player must be at star system depth to enter a planet');
     }
@@ -143,6 +162,42 @@ export class PlayerLocationService {
     const location = buildPlanetLocation({
       cubeId: player.location.cube.id,
       starSystemId: player.location.starSystem.id,
+      planetId: transition.planetId,
+      hex_coords: transition.hex_coords,
+    });
+
+    return this.saveLocation(player, location);
+  }
+
+  private async adminRelocateToPlanet(
+    player: Player,
+    transition: Extract<LocationTransition, { type: 'enterPlanet' }>,
+  ): Promise<Player> {
+    const starSystemId = parseStarSystemIdFromPlanetId(transition.planetId);
+    if (!starSystemId) {
+      throw new BadRequestException(`Invalid planet id format: "${transition.planetId}"`);
+    }
+
+    const star = await this.starService.findById(starSystemId);
+    if (!star) {
+      throw new NotFoundException(`Star "${starSystemId}" not found`);
+    }
+
+    const system = await this.starSystemService.getStarSystem(starSystemId);
+    const summary = system.planets.find((planet) => planet.id === transition.planetId);
+    if (!summary) {
+      throw new NotFoundException(
+        `Planet "${transition.planetId}" not found in star system "${starSystemId}"`,
+      );
+    }
+
+    if (summary.type === 'gas') {
+      throw new UnprocessableEntityException('Gas planets have no enterable surface');
+    }
+
+    const location = buildPlanetLocation({
+      cubeId: star.cube_id,
+      starSystemId,
       planetId: transition.planetId,
       hex_coords: transition.hex_coords,
     });

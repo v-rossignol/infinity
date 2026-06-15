@@ -19,14 +19,14 @@ describe('SocketGateway galaxy events', () => {
   const payload = {
     cube: {
       id: '550e8400-e29b-41d4-a716-446655440000',
-      name: 'kikyhk',
+      name: 'Ces Luf Top',
       origin: { x: 10, y: 10, z: 10 },
       star_ids: ['661e8400-e29b-41d4-a716-446655440001'],
     },
     stars: [
       {
         id: '661e8400-e29b-41d4-a716-446655440001',
-        name: 'Alpha kikyhk',
+        name: 'Alpha Ces Luf Top',
         local_coords: { x: 1.0, y: 2.0, z: 3.0 },
         cube_id: '550e8400-e29b-41d4-a716-446655440000',
         properties: { type: 'yellow' as const },
@@ -209,10 +209,7 @@ describe('SocketGateway planet events', () => {
 
     await gateway.handlePlanetJoin(mockClient, { planetId: 'alpha-centauri_planet_0' });
 
-    expect(mockPlanetsService.joinPlanet).toHaveBeenCalledWith(
-      playerId,
-      'alpha-centauri_planet_0',
-    );
+    expect(mockPlanetsService.joinPlanet).toHaveBeenCalledWith(playerId, 'alpha-centauri_planet_0');
     expect(mockClient.join).toHaveBeenCalledWith('alpha-centauri_planet_0');
     expect(mockServer.to).toHaveBeenCalledWith('alpha-centauri_planet_0');
     expect(mockServer.emit).toHaveBeenCalledWith(PLANET_EVENTS.UPDATE, {
@@ -289,7 +286,10 @@ describe('SocketGateway system events', () => {
       providers: [
         SocketGateway,
         { provide: GalaxyService, useValue: mockGalaxyService },
-        { provide: PlanetsService, useValue: { joinPlanet: jest.fn(), handlePlayerMove: jest.fn() } },
+        {
+          provide: PlanetsService,
+          useValue: { joinPlanet: jest.fn(), handlePlayerMove: jest.fn() },
+        },
         { provide: CubeService, useValue: { getOrCreateByOrigin: jest.fn() } },
         { provide: StarService, useValue: { findById: jest.fn() } },
         { provide: SocketPlayerAuthService, useValue: mockSocketPlayerAuthService },

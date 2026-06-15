@@ -27,7 +27,7 @@ export class StarSystemService {
       throw new NotFoundException(`Star "${starId}" not found`);
     }
 
-    const systemData = generateStarSystem({ seed: starId });
+    const systemData = generateStarSystem({ seed: starId, starName: star.name });
     const system = new this.starSystemModel({
       _id: starId,
       ...systemData,

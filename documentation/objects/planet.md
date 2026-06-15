@@ -9,6 +9,7 @@ sources:
   - src/modules/planets/planets.service.ts
   - src/shared/interfaces/planet.interface.ts
   - src/shared/utils/planet-surface-generation.ts
+  - src/shared/utils/planet-naming.ts
   - src/shared/constants/game.constants.ts
   - documentation/objects/star-system.md
   - documentation/planets/hexagonal-planet-specification.md
@@ -56,7 +57,7 @@ Procedural generation uses **`_id`** as the surface seed (no separate `seed` fie
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `hexagons` | object[] | Flat list of **`radius × radius`** hex cells |
+| `hexagons` | object[] | Flat list of **`radius × (radius + 1)`** hex cells |
 | `generatedAt` | Date | Timestamp of first surface generation |
 
 ### Hexagon (`surface.hexagons[]`)
@@ -67,11 +68,11 @@ Procedural generation uses **`_id`** as the surface seed (no separate `seed` fie
 | `resources` | object[] | Per-hex deposits — **`[]` in current MVP** |
 | `dangerLevel` | number | Integer **0–10** |
 | `coordinates.q` | number | Axial coordinate; `0 ≤ q < radius` |
-| `coordinates.r` | number | Axial coordinate; `0 ≤ r < radius` |
+| `coordinates.r` | number | Axial coordinate; `0 ≤ r < radius + 1` |
 
 ### Toroidal grid
 
-Neighbor lookup wraps both axes with `% radius`. Server and client must use the same `getNeighbors(q, r, radius)` logic for movement display. See [hexagonal-planet-specification.md](../planets/hexagonal-planet-specification.md).
+Neighbor lookup wraps `q` with `% radius` and `r` with `% (radius + 1)`. Server and client must use the same `getNeighbors(q, r, radius)` logic for movement display. See [hexagonal-planet-specification.md](../planets/hexagonal-planet-specification.md).
 
 ---
 
@@ -82,7 +83,7 @@ Returned by `GET /infinity/planets/:planetId` as the **Mongoose document** shape
 ```json
 {
   "_id": "661e8400-e29b-41d4-a716-446655440001_planet_0",
-  "name": "Planet 1",
+  "name": "Alpha CesLufTop I",
   "starSystemId": "661e8400-e29b-41d4-a716-446655440001",
   "type": "rocky",
   "radius": 5,
@@ -107,7 +108,7 @@ Returned by `GET /infinity/planets/:planetId` as the **Mongoose document** shape
 }
 ```
 
-The example shows **one** hex; a full surface has **`radius × radius`** entries (25 when `radius` is 5).
+The example shows **one** hex; a full surface has **`radius × (radius + 1)`** entries (30 when `radius` is 5).
 
 ---
 
@@ -190,7 +191,7 @@ Copied from the matching `StarSystem.planets[]` entry — **not** re-rolled:
 
 | Generated value | Rule |
 |-----------------|------|
-| Grid size | `radius × radius` cells |
+| Grid size | `radius × (radius + 1)` cells |
 | `hexagons[].biome` | Random from `HEX_BIOMES` (seeded by `_id`) — band-based rules deferred |
 | `hexagons[].dangerLevel` | Random **0–10** (seeded by `_id`) |
 | `hexagons[].resources` | Always **`[]`** in MVP |

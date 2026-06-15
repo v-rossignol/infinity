@@ -4,12 +4,7 @@ import { Vec3 } from '../interfaces/galaxy.interface';
 
 export const generateCubeName = (origin: Vec3): string => hashOriginToName(formatOriginKey(origin));
 
-export {
-  crc32,
-  generateCubeNameWithCollisionHandling,
-  hashOriginToName,
-  toBase36Lower,
-} from './cube-naming';
+export { crc32, generateCubeNameWithCollisionHandling, hashOriginToName } from './cube-naming';
 
 export {
   generateCube,

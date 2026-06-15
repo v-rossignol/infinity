@@ -8,6 +8,11 @@ import { StarSystem } from '../galaxy/entities/star-system.schema';
 import { Planet } from '../planets/entities/planet.schema';
 import { User } from '../auth/entities/user.entity';
 import {
+  DEFAULT_LIST_PLANETS_COUNT,
+  DEFAULT_LIST_PLANETS_PAGE,
+  ListPlanetsQueryDto,
+} from './dto/list-planets-query.dto';
+import {
   DEFAULT_LIST_USERS_COUNT,
   DEFAULT_LIST_USERS_PAGE,
   ListUsersQueryDto,
@@ -17,6 +22,21 @@ export type AdminUserSummary = Pick<User, 'id' | 'username' | 'email' | 'role' |
 
 export interface PaginatedAdminUsers {
   items: AdminUserSummary[];
+  total: number;
+  page: number;
+  count: number;
+}
+
+export type AdminPlanetSummary = Pick<
+  Planet,
+  '_id' | 'name' | 'starSystemId' | 'type' | 'radius' | 'resources'
+> & {
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export interface PaginatedAdminPlanets {
+  items: AdminPlanetSummary[];
   total: number;
   page: number;
   count: number;
@@ -65,6 +85,25 @@ export class AdminService {
       skip: (page - 1) * count,
       take: count,
     });
+
+    return { items, total, page, count };
+  }
+
+  async listPlanets(query: ListPlanetsQueryDto = {}): Promise<PaginatedAdminPlanets> {
+    const page = query.page ?? DEFAULT_LIST_PLANETS_PAGE;
+    const count = query.count ?? DEFAULT_LIST_PLANETS_COUNT;
+    const skip = (page - 1) * count;
+
+    const [items, total] = await Promise.all([
+      this.planetModel
+        .find()
+        .select('_id name starSystemId type radius resources createdAt updatedAt')
+        .sort({ createdAt: 1 })
+        .skip(skip)
+        .limit(count)
+        .lean<AdminPlanetSummary[]>(),
+      this.planetModel.countDocuments(),
+    ]);
 
     return { items, total, page, count };
   }

@@ -89,9 +89,7 @@ describe('PlayersController', () => {
       const location = result.player.location;
       expect(location && 'planet' in location && location.planet.id).toBe('star-1_planet_0');
       expect(location && 'cube' in location && 'position' in location.cube).toBe(false);
-      expect(
-        location && 'starSystem' in location && 'position' in location.starSystem,
-      ).toBe(false);
+      expect(location && 'starSystem' in location && 'position' in location.starSystem).toBe(false);
     });
 
     it('returns the same location on repeat enter-game', async () => {

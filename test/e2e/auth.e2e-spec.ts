@@ -1,7 +1,11 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AUTH_COOKIE_NAME } from '../../src/modules/auth/constants/auth-cookie';
-import { parseTokenFromSetCookie, registerAndGetAuth, buildAuthCookie } from './helpers/auth.helper';
+import {
+  parseTokenFromSetCookie,
+  registerAndGetAuth,
+  buildAuthCookie,
+} from './helpers/auth.helper';
 import { apiPath, createE2eApp, shouldRunE2e } from './helpers/create-e2e-app';
 
 const describeE2e = shouldRunE2e() ? describe : describe.skip;
@@ -51,9 +55,7 @@ describeE2e('Auth (e2e)', () => {
       .set('Cookie', buildAuthCookie(token))
       .expect(200);
 
-    await request(app.getHttpServer())
-      .get(apiPath('/auth/me'))
-      .expect(401);
+    await request(app.getHttpServer()).get(apiPath('/auth/me')).expect(401);
   });
 
   it('returns 409 when username is already taken', async () => {

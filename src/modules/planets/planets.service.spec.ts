@@ -7,6 +7,7 @@ import {
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { buildPlanetLocation } from '../../shared/utils/player-location';
+import { getPlanetHexCount } from '../../shared/utils/planet-surface-generation';
 import { StarService } from '../galaxy/star.service';
 import { StarSystemService } from '../galaxy/star-system.service';
 import { PlayerLocationService } from '../players/player-location.service';
@@ -136,7 +137,7 @@ describe('PlanetsService', () => {
     expect(planet.type).toBe(summary.type);
     expect(planet.radius).toBe(summary.radius);
     expect(planet.resources).toEqual(summary.resources);
-    expect(planet.surface.hexagons).toHaveLength(25);
+    expect(planet.surface.hexagons).toHaveLength(getPlanetHexCount(summary.radius));
   });
 
   it('returns the same saved planet on reload without regenerating', async () => {
@@ -146,7 +147,7 @@ describe('PlanetsService', () => {
       type: summary.type,
       radius: summary.radius,
       resources: summary.resources,
-      surface: { hexagons: Array(25).fill({ resources: [] }) },
+      surface: { hexagons: Array(getPlanetHexCount(summary.radius)).fill({ resources: [] }) },
     };
     const exec = jest.fn().mockResolvedValue(saved);
     findById.mockReturnValue({ exec });

@@ -96,7 +96,7 @@ describe('galaxy-generation', () => {
       });
 
       expect(result.cube.id).toBe('550e8400-e29b-41d4-a716-446655440000');
-      expect(result.cube.name).toBe('kikyhk');
+      expect(result.cube.name).toBe('Ces Luf Top');
       expect(result.cube.origin).toEqual(origin);
       expect(result.cube.star_ids).toHaveLength(result.stars.length);
       expect(result.stars.length).toBeGreaterThanOrEqual(GALAXY_CONSTANTS.MIN_STARS_PER_CUBE);

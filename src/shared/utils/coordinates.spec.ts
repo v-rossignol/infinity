@@ -88,11 +88,11 @@ describe('coordinates', () => {
 });
 
 describe('cube-naming integration', () => {
-  it('produces deterministic lowercase base36 names from origin keys', () => {
+  it('produces deterministic pronounceable names from origin keys', () => {
     const originKey = formatOriginKey({ x: 10, y: 10, z: 10 });
     const first = hashOriginToName(originKey);
     const second = hashOriginToName(originKey);
     expect(first).toBe(second);
-    expect(first).toMatch(/^[0-9a-z]+$/);
+    expect(first).toBe('Ces Luf Top');
   });
 });

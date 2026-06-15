@@ -10,6 +10,7 @@ sources:
   - src/modules/galaxy/star-system.service.ts
   - src/modules/galaxy/galaxy.controller.ts
   - src/shared/utils/procedural-generation.ts
+  - src/shared/utils/planet-naming.ts
   - documentation/stellar-system/stellar-system-summary.md
   - documentation/objects/star.md
   - documentation/objects/cube.md
@@ -51,7 +52,7 @@ There is **no** embedded `stars[]` field. Load the parent star separately via `G
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | string | `{starId}_planet_{index}` — links to detailed `Planet` documents |
-| `name` | string | Display name (e.g. `Planet 1`) |
+| `name` | string | Display name (e.g. `Alpha CesLufTop I`) |
 | `x`, `y` | number | Local 2D position in the system view |
 | `radius` | number | Hex grid edge length — **odd integer** from **5** to **15** |
 | `type` | string | `rocky`, `gas`, `ice`, or `lava` |
@@ -66,11 +67,11 @@ Unlike [cube](./cube.md) and [star](./star.md) responses, the enter-star endpoin
 ```json
 {
   "_id": "661e8400-e29b-41d4-a716-446655440001",
-  "name": "Alpha kikyhk",
+  "name": "Alpha Ces Luf Top",
   "planets": [
     {
       "id": "661e8400-e29b-41d4-a716-446655440001_planet_0",
-      "name": "Planet 1",
+      "name": "Alpha CesLufTop I",
       "x": 145.2,
       "y": 34.8,
       "radius": 11,
@@ -154,7 +155,7 @@ erDiagram
 
 ## Generation rules
 
-First-time generation is handled by `StarSystemService.generateStarSystem()` and `generateStarSystem({ seed })` in `procedural-generation.ts`.
+First-time generation is handled by `StarSystemService.generateStarSystem()` and `generateStarSystem({ seed, starName })` in `procedural-generation.ts`. Planet names use `getPlanetName()` in `planet-naming.ts`.
 
 | Rule | Behavior |
 |------|----------|
@@ -169,7 +170,7 @@ First-time generation is handled by `StarSystemService.generateStarSystem()` and
 |-----------------|--------------|
 | Planet count | `Math.floor(noise.perlin2(1, 0) * 5) + 3` |
 | Planet id | `{seed}_planet_{index}` |
-| Planet name | `Planet {index + 1}` |
+| Planet name | `{Greek} {cubeNameNoSpaces} {Roman}` via `getPlanetName(star.name, index + 1)` — e.g. `Alpha CesLufTop I` |
 | Planet position | Random angle; distance `100 + noise.perlin2(index, 1) * 50` from center `(0, 0)` |
 | Planet radius | Odd integer **5–15** via `rollOddPlanetRadius()` (`PLANET_RADIUS_MIN` / `MAX`) |
 | Planet type | Random `rocky`, `gas`, `ice`, `lava` |

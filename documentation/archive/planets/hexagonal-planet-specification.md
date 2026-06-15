@@ -26,7 +26,7 @@ The `Planet` Mongoose schema uses a nested **`surface.hexagons[]`** toroidal hex
 When a player enters a **landable** planet, the server creates or loads a **`Planet`** document in the `planets` collection. The walkable **hex layer** is modeled as **`PlanetSurface`** (nested on `Planet.surface`).
 
 - Grid size equals the planet **`radius`** inherited from the [star-system](../objects/star-system.md) planet summary.
-- **`radius` must be an odd integer** (e.g. `5` → 25 hex cells in a 5×5 axial region).
+- **`radius` must be an odd integer** (e.g. `5` → 30 hex cells in a 5×6 axial region).
 - Each hex has a **biome**, **resources**, and a **danger level**.
 - Coordinates use **axial** `(q, r)`; edges wrap with modulo arithmetic → **torus** topology.
 - **Gas planets** have no surface; players cannot enter them.
@@ -125,7 +125,7 @@ interface Planet {
 | `name` | Inherited | Same as `planets[].name` (e.g. `Planet 1`) |
 | `starSystemId` | Inherited | Same as `StarSystem._id` (parent star UUID) |
 | `type` | Inherited | Same as `planets[].type` — **not** re-rolled at generation |
-| `radius` | Inherited | Same as `planets[].radius`. **Odd integer** — hex grid edge length N; N×N cells |
+| `radius` | Inherited | Same as `planets[].radius`. **Odd integer** — hex grid width N; **N×(N+1)** cells |
 | `resources` | Inherited | Same as `planets[].resources` — summary quantities |
 | `surface` | Generated | **`PlanetSurface`** — absent when `type` is `gas` (no document created) |
 
@@ -151,7 +151,7 @@ interface PlanetSurface {
 
 | Field | Source | Notes |
 |-------|--------|-------|
-| `hexagons` | Generated | Flat list of **`radius × radius`** cells |
+| `hexagons` | Generated | Flat list of **`radius × (radius + 1)`** cells |
 | `generatedAt` | Generated | Timestamp of first surface generation |
 
 ### Hexagon
@@ -174,7 +174,7 @@ interface Hexagon {
 | `biome` | Cell biome. Includes `ocean` as a **cell** type (not a planet `type`). |
 | `resources` | Deposits on this hex (see [Resources](#resources)). |
 | `dangerLevel` | Local threat level for gameplay. |
-| `coordinates.q`, `coordinates.r` | Axial coordinates; `0 ≤ q, r < radius`. |
+| `coordinates.q`, `coordinates.r` | Axial coordinates; `0 ≤ q < radius`, `0 ≤ r < radius + 1`. |
 
 ---
 
@@ -182,9 +182,9 @@ interface Hexagon {
 
 ### Coordinate system
 
-- The surface is an **N×N axial region** with **N = `radius`**.
-- Each pair `(q, r)` with `0 ≤ q < radius` and `0 ≤ r < radius` is one hex cell.
-- Total cells: **`radius × radius`**.
+- The surface is a **radius × (radius + 1)** axial region.
+- Each pair `(q, r)` with `0 ≤ q < radius` and `0 ≤ r < radius + 1` is one hex cell.
+- Total cells: **`radius × (radius + 1)`** (one extra row on `r` for torus tiling).
 - In flat rendering this region is a **parallelogram** in hex space, not a visually square patch; topology follows axial rules below.
 
 **Odd `radius`**
@@ -199,9 +199,9 @@ Star-system generation must assign **odd integer** `radius` values for landable 
 
 ### Toroidal topology
 
-Neighbor lookup wraps both axes with **`% radius`**. This defines a **torus**:
+Neighbor lookup wraps `q` with **`% radius`** and `r` with **`% (radius + 1)`**. This defines a **torus**:
 
-- Example: **`radius = 3`** → 3×3 region, **9 hexagons**. Moving off the left edge at `(0, r)` wraps to `(2, r)`; moving off the top at `(q, 0)` wraps to `(q, 2)`.
+- Example: **`radius = 3`** → 3×4 region, **12 hexagons**. Moving off the left edge at `(0, r)` wraps to `(2, r)`; moving off the top at `(q, 0)` wraps to `(q, 3)`.
 - Every cell has **six neighbors**, including edge cells.
 - When drawing the grid **flat**, wrapped neighbors may not look adjacent; server and client must use the same `getNeighbors` function for movement and pathfinding.
 
@@ -224,14 +224,15 @@ function getNeighbors(
   r: number,
   radius: number,
 ): { q: number; r: number }[] {
-  const n = radius;
+  const width = radius;
+  const height = radius + 1;
   return [
-    { q: (q - 1 + n) % n, r: (r + 1) % n },
-    { q: q, r: (r + 1) % n },
-    { q: (q + 1) % n, r: r },
-    { q: (q + 1) % n, r: (r - 1 + n) % n },
-    { q: q, r: (r - 1 + n) % n },
-    { q: (q - 1 + n) % n, r: r },
+    { q: (q - 1 + width) % width, r: (r + 1) % height },
+    { q: q, r: (r + 1) % height },
+    { q: (q + 1) % width, r: r },
+    { q: (q + 1) % width, r: (r - 1 + height) % height },
+    { q: q, r: (r - 1 + height) % height },
+    { q: (q - 1 + width) % width, r: r },
   ];
 }
 ```
@@ -245,8 +246,8 @@ function getNeighbors(
 | Top-Left | (2, 1) |
 | Top-Right | (0, 1) |
 | Right | (1, 0) |
-| Bottom-Right | (1, 2) |
-| Bottom-Left | (0, 2) |
+| Bottom-Right | (1, 3) |
+| Bottom-Left | (0, 3) |
 | Left | (2, 0) |
 
 **`radius = 5`** — neighbors of `(0, 0)`:
@@ -256,8 +257,8 @@ function getNeighbors(
 | Top-Left | (4, 1) |
 | Top-Right | (0, 1) |
 | Right | (1, 0) |
-| Bottom-Right | (1, 4) |
-| Bottom-Left | (0, 4) |
+| Bottom-Right | (1, 5) |
+| Bottom-Left | (0, 5) |
 | Left | (4, 0) |
 
 ---
@@ -398,7 +399,7 @@ Collection: **`planets`**. Shape: inherited fields + nested **`surface`**.
 }
 ```
 
-The example lists **one** hex inside **`surface.hexagons`**; a full **`PlanetSurface`** contains **`radius × radius`** entries (25 when `radius` is 5).
+The example lists **one** hex inside **`surface.hexagons`**; a full **`PlanetSurface`** contains **`radius × (radius + 1)`** entries (30 when `radius` is 5).
 
 ---
 

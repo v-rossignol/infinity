@@ -1,4 +1,9 @@
-import { generatePlanetSurface, getNeighbors } from './planet-surface-generation';
+import {
+  generatePlanetSurface,
+  getNeighbors,
+  getPlanetGridHeight,
+  getPlanetHexCount,
+} from './planet-surface-generation';
 
 describe('planet-surface-generation', () => {
   describe('getNeighbors', () => {
@@ -7,8 +12,8 @@ describe('planet-surface-generation', () => {
         { q: 2, r: 1 },
         { q: 0, r: 1 },
         { q: 1, r: 0 },
-        { q: 1, r: 2 },
-        { q: 0, r: 2 },
+        { q: 1, r: 3 },
+        { q: 0, r: 3 },
         { q: 2, r: 0 },
       ]);
     });
@@ -18,17 +23,18 @@ describe('planet-surface-generation', () => {
         { q: 4, r: 1 },
         { q: 0, r: 1 },
         { q: 1, r: 0 },
-        { q: 1, r: 4 },
-        { q: 0, r: 4 },
+        { q: 1, r: 5 },
+        { q: 0, r: 5 },
         { q: 4, r: 0 },
       ]);
     });
   });
 
   describe('generatePlanetSurface', () => {
-    it('produces radius × radius hexagons', () => {
+    it('produces radius × (radius + 1) hexagons', () => {
       const surface = generatePlanetSurface({ seed: 'test-planet-1', radius: 5 });
-      expect(surface.hexagons).toHaveLength(25);
+      expect(surface.hexagons).toHaveLength(getPlanetHexCount(5));
+      expect(getPlanetGridHeight(5)).toBe(6);
     });
 
     it('assigns empty resources on every hex', () => {
@@ -41,7 +47,7 @@ describe('planet-surface-generation', () => {
     it('covers each coordinate pair once for radius = 5', () => {
       const surface = generatePlanetSurface({ seed: 'test-planet-3', radius: 5 });
       const coords = surface.hexagons.map((hex) => `${hex.coordinates.q},${hex.coordinates.r}`);
-      expect(new Set(coords).size).toBe(25);
+      expect(new Set(coords).size).toBe(getPlanetHexCount(5));
     });
   });
 });

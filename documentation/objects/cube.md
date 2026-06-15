@@ -27,16 +27,16 @@ Cubes are stored in MongoDB (`cubes` collection) and cached in Redis as part of 
 | Field | Type | Description |
 |-------|------|-------------|
 | `id` | UUID v4 | Primary key. Assigned at generation time. |
-| `name` | string | Deterministic hash label from `origin` (CRC32 + Base36, lowercase). See [cube-naming-specification.md](../galaxy/cube-naming-specification.md). |
+| `name` | string | Deterministic pronounceable label from `origin` (CRC32 + CVC syllables). See [cube-naming-specification.md](../galaxy/cube-naming-specification.md). |
 | `origin` | `{ x, y, z }` | Global position of the **cube center** in light-years. Each axis must be a multiple of **10**. |
 
 Examples:
 
 | `origin` | `name` |
 |----------|--------|
-| `(0, 0, 0)` | `1elvszz` |
-| `(10, 10, 10)` | `kikyhk` |
-| `(10, -10, 0)` | `1gqdbp2` |
+| `(0, 0, 0)` | `Dam Zil Pod` |
+| `(10, 10, 10)` | `Ces Luf Top` |
+| `(10, -10, 0)` | `Nod Nor Rez` |
 
 ---
 
@@ -69,7 +69,7 @@ REST and WebSocket responses expose `id` (MongoDB `_id` is mapped to `id`).
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "kikyhk",
+  "name": "Ces Luf Top",
   "origin": { "x": 10, "y": 10, "z": 10 },
   "star_ids": [
     "661e8400-e29b-41d4-a716-446655440001",
@@ -82,7 +82,7 @@ Bundled with stars as `CubeWithStars`:
 
 ```json
 {
-  "cube": { "id": "…", "name": "kikyhk", "origin": { "x": 10, "y": 10, "z": 10 }, "star_ids": ["…"] },
+  "cube": { "id": "…", "name": "Ces Luf Top", "origin": { "x": 10, "y": 10, "z": 10 }, "star_ids": ["…"] },
   "stars": [ … ]
 }
 ```
@@ -96,7 +96,7 @@ Collection: **`cubes`**
 ```json
 {
   "_id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "kikyhk",
+  "name": "Ces Luf Top",
   "origin": { "x": 10, "y": 10, "z": 10 },
   "star_ids": ["661e8400-e29b-41d4-a716-446655440001"],
   "createdAt": "2026-06-09T12:00:00.000Z",

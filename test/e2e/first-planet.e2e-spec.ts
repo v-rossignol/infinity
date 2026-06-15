@@ -56,9 +56,7 @@ describeE2e('First planet enter-game (e2e)', () => {
 
     expect(planet.body._id).toBe(planetId);
     expect(planet.body.type).toBe('rocky');
-    expect(planet.body.surface.hexagons.length).toBe(
-      planet.body.radius * planet.body.radius,
-    );
+    expect(planet.body.surface.hexagons.length).toBe(planet.body.radius * (planet.body.radius + 1));
   });
 
   it('GET player profile exposes location without legacy flat fields', async () => {

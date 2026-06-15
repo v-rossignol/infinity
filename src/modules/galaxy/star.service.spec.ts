@@ -33,7 +33,7 @@ describe('StarService', () => {
       exec: jest.fn().mockResolvedValue([
         {
           _id: 'star-uuid',
-          name: 'Alpha kikyhk',
+          name: 'Alpha Ces Luf Top',
           local_coords: { x: 1, y: 2, z: 3 },
           cube_id: 'cube-uuid',
           properties: { type: 'yellow' },
@@ -45,7 +45,7 @@ describe('StarService', () => {
     expect(stars).toEqual([
       {
         id: 'star-uuid',
-        name: 'Alpha kikyhk',
+        name: 'Alpha Ces Luf Top',
         local_coords: { x: 1, y: 2, z: 3 },
         cube_id: 'cube-uuid',
         properties: { type: 'yellow' },
@@ -70,14 +70,14 @@ describe('StarService', () => {
       service.saveManyBestEffort([
         {
           id: 'star-uuid-1',
-          name: 'Alpha kikyhk',
+          name: 'Alpha Ces Luf Top',
           local_coords: { x: 1, y: 2, z: 3 },
           cube_id: 'cube-uuid',
           properties: { type: 'yellow' },
         },
         {
           id: 'star-uuid-2',
-          name: 'Beta kikyhk',
+          name: 'Beta Ces Luf Top',
           local_coords: { x: 4, y: 5, z: 6 },
           cube_id: 'cube-uuid',
           properties: { type: 'red' },

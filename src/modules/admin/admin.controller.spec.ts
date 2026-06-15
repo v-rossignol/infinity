@@ -18,6 +18,7 @@ describe('AdminController', () => {
   const mockAdminService = {
     getUserById: jest.fn(),
     listUsers: jest.fn(),
+    listPlanets: jest.fn(),
     getStatistics: jest.fn(),
   };
 
@@ -61,6 +62,32 @@ describe('AdminController', () => {
 
     expect(mockAdminService.listUsers).toHaveBeenCalledWith({ page: 1, count: 20 });
     expect(result).toEqual(paginatedUsers);
+  });
+
+  it('lists planets', async () => {
+    const paginatedPlanets = {
+      items: [
+        {
+          _id: 'planet-1',
+          name: 'Terra',
+          starSystemId: 'system-1',
+          type: 'rocky',
+          radius: 10,
+          resources: { iron: 0.5 },
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        },
+      ],
+      total: 1,
+      page: 1,
+      count: 20,
+    };
+    mockAdminService.listPlanets.mockResolvedValue(paginatedPlanets);
+
+    const result = await controller.listPlanets({ page: 1, count: 20 });
+
+    expect(mockAdminService.listPlanets).toHaveBeenCalledWith({ page: 1, count: 20 });
+    expect(result).toEqual(paginatedPlanets);
   });
 
   it('returns admin statistics', async () => {

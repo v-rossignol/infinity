@@ -1,5 +1,6 @@
 import { Noise } from 'noisejs';
 import { GAME_CONSTANTS } from '../constants/game.constants';
+import { getPlanetName } from './planet-naming';
 
 interface StarSystemGenerationData {
   name: string;
@@ -16,6 +17,7 @@ interface StarSystemGenerationData {
 
 interface GenerateStarSystemOptions {
   seed: string;
+  starName: string;
 }
 
 /** Odd integer in [PLANET_RADIUS_MIN, PLANET_RADIUS_MAX] — hex grid edge length. */
@@ -34,7 +36,7 @@ const createNoise = (seed: string): Noise => {
 export const generateStarSystem = (
   options: GenerateStarSystemOptions,
 ): StarSystemGenerationData => {
-  const { seed } = options;
+  const { seed, starName } = options;
   const noise = createNoise(seed);
 
   const planetCount = Math.floor(noise.perlin2(1, 0) * 5) + 3;
@@ -44,7 +46,7 @@ export const generateStarSystem = (
     const distance = 100 + noise.perlin2(i, 1) * 50;
     planets.push({
       id: `${seed}_planet_${i}`,
-      name: `Planet ${i + 1}`,
+      name: getPlanetName(starName, i + 1),
       x: Math.cos(angle) * distance,
       y: Math.sin(angle) * distance,
       radius: rollOddPlanetRadius(),

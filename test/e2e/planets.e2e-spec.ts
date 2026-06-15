@@ -93,7 +93,7 @@ describeE2e('Planets (e2e)', () => {
       expect(response.body.radius).toBe(summary!.radius);
       expect(response.body.radius % 2).toBe(1);
       expect(response.body.resources).toEqual(summary!.resources);
-      expect(response.body.surface.hexagons).toHaveLength(summary!.radius * summary!.radius);
+      expect(response.body.surface.hexagons).toHaveLength(summary!.radius * (summary!.radius + 1));
       for (const hex of response.body.surface.hexagons) {
         expect(hex.resources).toEqual([]);
       }

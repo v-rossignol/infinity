@@ -148,11 +148,40 @@ describe('PlayerLocationController', () => {
       r: 4,
     });
 
-    expect(mockPlayerLocationService.transitionTo).toHaveBeenCalledWith(playerId, {
-      type: 'enterPlanet',
-      planetId,
-      hex_coords: { q: 3, r: 4 },
-    });
+    expect(mockPlayerLocationService.transitionTo).toHaveBeenCalledWith(
+      playerId,
+      {
+        type: 'enterPlanet',
+        planetId,
+        hex_coords: { q: 3, r: 4 },
+      },
+      { adminBypass: false },
+    );
+    expect(result).toEqual({ player: updated });
+  });
+
+  it('enterPlanet enables admin bypass for admin users', async () => {
+    const updated = { ...player };
+    mockPlayerLocationService.transitionTo.mockResolvedValue(updated);
+
+    const result = await controller.enterPlanet(
+      { user: { id: userId, username: 'admin', role: 'admin' } } as never,
+      {
+        planetId,
+        q: 3,
+        r: 4,
+      },
+    );
+
+    expect(mockPlayerLocationService.transitionTo).toHaveBeenCalledWith(
+      playerId,
+      {
+        type: 'enterPlanet',
+        planetId,
+        hex_coords: { q: 3, r: 4 },
+      },
+      { adminBypass: true },
+    );
     expect(result).toEqual({ player: updated });
   });
 

@@ -31,14 +31,14 @@ describe('CubeService', () => {
   const payload = {
     cube: {
       id: '550e8400-e29b-41d4-a716-446655440000',
-      name: 'kikyhk',
+      name: 'Ces Luf Top',
       origin,
       star_ids: ['661e8400-e29b-41d4-a716-446655440001'],
     },
     stars: [
       {
         id: '661e8400-e29b-41d4-a716-446655440001',
-        name: 'Alpha kikyhk',
+        name: 'Alpha Ces Luf Top',
         local_coords: { x: 1.0, y: 2.0, z: 3.0 },
         cube_id: '550e8400-e29b-41d4-a716-446655440000',
         properties: { type: 'yellow' as const },
@@ -159,7 +159,7 @@ describe('CubeService', () => {
     });
     mockStarService.findByCubeId.mockResolvedValue(payload.stars);
 
-    await expect(service.findByName('kikyhk')).resolves.toEqual(payload);
+    await expect(service.findByName('Ces Luf Top')).resolves.toEqual(payload);
   });
 
   it('findByName returns payload from Redis when MongoDB miss', async () => {
@@ -168,7 +168,7 @@ describe('CubeService', () => {
     });
     mockRedisService.get.mockResolvedValue(JSON.stringify(payload));
 
-    await expect(service.findByName('kikyhk')).resolves.toEqual(payload);
+    await expect(service.findByName('Ces Luf Top')).resolves.toEqual(payload);
   });
 
   it('findByName returns null when cube is not found', async () => {
@@ -186,7 +186,7 @@ describe('CubeService', () => {
     expect(mockRedisService.del).toHaveBeenCalledWith(
       'galaxy:cube:origin:10,10,10',
       'galaxy:cube:id:550e8400-e29b-41d4-a716-446655440000',
-      'galaxy:cube:name:kikyhk',
+      'galaxy:cube:name:Ces Luf Top',
     );
   });
 

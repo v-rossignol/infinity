@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
@@ -8,6 +13,8 @@ import {
 } from '../../shared/utils/player-location';
 import { Player } from './entities/player.entity';
 import { PlayerLocationService } from './player-location.service';
+import { StarService } from '../galaxy/star.service';
+import { StarSystemService } from '../galaxy/star-system.service';
 
 describe('PlayerLocationService', () => {
   const playerId = 'player-uuid';
@@ -35,6 +42,8 @@ describe('PlayerLocationService', () => {
 
   let service: PlayerLocationService;
   let repository: { findOneBy: jest.Mock; save: jest.Mock };
+  let starService: { findById: jest.Mock };
+  let starSystemService: { getStarSystem: jest.Mock };
 
   const savePlayer = (location: Player['location']): Player =>
     ({
@@ -50,11 +59,19 @@ describe('PlayerLocationService', () => {
       findOneBy: jest.fn(),
       save: jest.fn(async (player) => player),
     };
+    starService = {
+      findById: jest.fn(),
+    };
+    starSystemService = {
+      getStarSystem: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PlayerLocationService,
         { provide: getRepositoryToken(Player), useValue: repository },
+        { provide: StarService, useValue: starService },
+        { provide: StarSystemService, useValue: starSystemService },
       ],
     }).compile();
 
@@ -115,9 +132,7 @@ describe('PlayerLocationService', () => {
 
     const result = await service.updateCubePosition(playerId, { x: 1, y: 2, z: 3 });
 
-    expect(result.location).toEqual(
-      buildCubeLocation({ cubeId, position: { x: 1, y: 2, z: 3 } }),
-    );
+    expect(result.location).toEqual(buildCubeLocation({ cubeId, position: { x: 1, y: 2, z: 3 } }));
   });
 
   it('updateStarSystemPosition patches system map coordinates', async () => {
@@ -222,6 +237,92 @@ describe('PlayerLocationService', () => {
           position: { x: 0, y: 0 },
         }),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('admin enterPlanet relocates from any depth', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(cubeDepth));
+      starService.findById.mockResolvedValue({
+        id: starSystemId,
+        cube_id: cubeId,
+      });
+      starSystemService.getStarSystem.mockResolvedValue({
+        planets: [{ id: planetId, type: 'rocky', radius: 7 }],
+      });
+
+      const result = await service.transitionTo(
+        playerId,
+        {
+          type: 'enterPlanet',
+          planetId,
+          hex_coords: { q: 2, r: 3 },
+        },
+        { adminBypass: true },
+      );
+
+      expect(result.location).toEqual(
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId,
+          hex_coords: { q: 2, r: 3 },
+        }),
+      );
+    });
+
+    it('admin enterPlanet rejects missing star with NotFoundException', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(cubeDepth));
+      starService.findById.mockResolvedValue(null);
+
+      await expect(
+        service.transitionTo(
+          playerId,
+          {
+            type: 'enterPlanet',
+            planetId,
+            hex_coords: { q: 0, r: 0 },
+          },
+          { adminBypass: true },
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('admin enterPlanet rejects gas planets with UnprocessableEntityException', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(null));
+      starService.findById.mockResolvedValue({
+        id: starSystemId,
+        cube_id: cubeId,
+      });
+      starSystemService.getStarSystem.mockResolvedValue({
+        planets: [{ id: planetId, type: 'gas', radius: 7 }],
+      });
+
+      await expect(
+        service.transitionTo(
+          playerId,
+          {
+            type: 'enterPlanet',
+            planetId,
+            hex_coords: { q: 0, r: 0 },
+          },
+          { adminBypass: true },
+        ),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+
+    it('admin enterPlanet rejects invalid planet id format', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(null));
+
+      await expect(
+        service.transitionTo(
+          playerId,
+          {
+            type: 'enterPlanet',
+            planetId: 'invalid-planet-id',
+            hex_coords: { q: 0, r: 0 },
+          },
+          { adminBypass: true },
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
     });
   });
 

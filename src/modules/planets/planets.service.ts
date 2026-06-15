@@ -11,11 +11,11 @@ import {
   PlanetHexPosition,
   PlanetMovePayload,
 } from '../../shared/interfaces/planet-position.interface';
+import { buildPlanetLocation, isPlayerLocationOnPlanet } from '../../shared/utils/player-location';
 import {
-  buildPlanetLocation,
-  isPlayerLocationOnPlanet,
-} from '../../shared/utils/player-location';
-import { generatePlanetSurface } from '../../shared/utils/planet-surface-generation';
+  generatePlanetSurface,
+  getPlanetGridHeight,
+} from '../../shared/utils/planet-surface-generation';
 import { StarService } from '../galaxy/star.service';
 import { PlayerLocationService } from '../players/player-location.service';
 import { StarSystemService } from '../galaxy/star-system.service';
@@ -101,7 +101,7 @@ export class PlanetsService {
   rollRandomPosition(radius: number): PlanetHexPosition {
     return {
       q: Math.floor(Math.random() * radius),
-      r: Math.floor(Math.random() * radius),
+      r: Math.floor(Math.random() * getPlanetGridHeight(radius)),
     };
   }
 

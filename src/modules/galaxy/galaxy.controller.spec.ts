@@ -25,7 +25,7 @@ describe('GalaxyController', () => {
   });
 
   it('returns a star system by id', async () => {
-    const system = { _id: 'star-uuid', name: 'Alpha kikyhk', planets: [], visited: true };
+    const system = { _id: 'star-uuid', name: 'Alpha Ces Luf Top', planets: [], visited: true };
     mockStarSystemService.getStarSystem.mockResolvedValue(system);
 
     await expect(controller.getStarSystem('star-uuid')).resolves.toEqual(system);

@@ -25,7 +25,7 @@ describe('PlanetsController (integration)', () => {
     radius: 5,
     resources: { iron: 100, gold: 50, water: 200 },
     surface: {
-      hexagons: Array.from({ length: 25 }, (_, index) => ({
+      hexagons: Array.from({ length: 30 }, (_, index) => ({
         biome: 'desert',
         resources: [],
         dangerLevel: 1,

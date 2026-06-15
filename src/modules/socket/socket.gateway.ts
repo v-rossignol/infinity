@@ -52,7 +52,12 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleGalaxyMove(client: Socket, payload: { x: number; y: number; z: number }) {
     try {
       if (!this.isValidPosition(payload)) {
-        this.emitGalaxyError(client, GALAXY_EVENTS.MOVE, 'x, y, and z are required numeric fields', 400);
+        this.emitGalaxyError(
+          client,
+          GALAXY_EVENTS.MOVE,
+          'x, y, and z are required numeric fields',
+          400,
+        );
         return;
       }
 
@@ -168,7 +173,12 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleSystemMove(client: Socket, payload: { x: number; y: number }) {
     try {
       if (!this.isValidSystemPosition(payload)) {
-        this.emitSystemError(client, SYSTEM_EVENTS.MOVE, 'x and y are required numeric fields', 400);
+        this.emitSystemError(
+          client,
+          SYSTEM_EVENTS.MOVE,
+          'x and y are required numeric fields',
+          400,
+        );
         return;
       }
 

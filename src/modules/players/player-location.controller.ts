@@ -22,7 +22,7 @@ import { PlayerLocationService } from './player-location.service';
 import { PlayersService } from './players.service';
 
 type AuthenticatedRequest = Request & {
-  user: { id: string; username: string };
+  user: { id: string; username: string; role?: string };
 };
 
 @Controller('players/me/location')
@@ -36,10 +36,7 @@ export class PlayerLocationController {
   @Patch()
   async updateLocation(@Req() req: AuthenticatedRequest, @Body() dto: UpdateLocationDto) {
     const player = await this.resolvePlayer(req.user.id);
-    const updated = await this.playerLocationService.setLocation(
-      player.id,
-      dto.location ?? null,
-    );
+    const updated = await this.playerLocationService.setLocation(player.id, dto.location ?? null);
     return { player: updated };
   }
 
@@ -59,11 +56,15 @@ export class PlayerLocationController {
   @HttpCode(200)
   async enterPlanet(@Req() req: AuthenticatedRequest, @Body() dto: EnterPlanetDto) {
     const player = await this.resolvePlayer(req.user.id);
-    const updated = await this.playerLocationService.transitionTo(player.id, {
-      type: 'enterPlanet',
-      planetId: dto.planetId,
-      hex_coords: { q: dto.q, r: dto.r },
-    });
+    const updated = await this.playerLocationService.transitionTo(
+      player.id,
+      {
+        type: 'enterPlanet',
+        planetId: dto.planetId,
+        hex_coords: { q: dto.q, r: dto.r },
+      },
+      { adminBypass: req.user.role === 'admin' },
+    );
     return { player: updated };
   }
 

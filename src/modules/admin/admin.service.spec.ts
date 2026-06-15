@@ -28,6 +28,7 @@ describe('AdminService', () => {
 
   const planetModel = {
     countDocuments: jest.fn(),
+    find: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -127,6 +128,75 @@ describe('AdminService', () => {
       skip: 20,
       take: 10,
     });
+  });
+
+  it('lists planets without surface data using default pagination', async () => {
+    const planets = [
+      {
+        _id: 'planet-1',
+        name: 'Terra',
+        starSystemId: 'system-1',
+        type: 'rocky',
+        radius: 10,
+        resources: { iron: 0.5 },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+    const lean = jest.fn().mockResolvedValue(planets);
+    const limit = jest.fn().mockReturnValue({ lean });
+    const skip = jest.fn().mockReturnValue({ limit });
+    const sort = jest.fn().mockReturnValue({ skip });
+    const select = jest.fn().mockReturnValue({ sort });
+    planetModel.find.mockReturnValue({ select });
+    planetModel.countDocuments.mockResolvedValue(1);
+
+    await expect(service.listPlanets()).resolves.toEqual({
+      items: planets,
+      total: 1,
+      page: 1,
+      count: 20,
+    });
+    expect(planetModel.find).toHaveBeenCalledWith();
+    expect(select).toHaveBeenCalledWith(
+      '_id name starSystemId type radius resources createdAt updatedAt',
+    );
+    expect(sort).toHaveBeenCalledWith({ createdAt: 1 });
+    expect(skip).toHaveBeenCalledWith(0);
+    expect(limit).toHaveBeenCalledWith(20);
+    expect(lean).toHaveBeenCalled();
+    expect(planetModel.countDocuments).toHaveBeenCalled();
+  });
+
+  it('lists planets with custom page and count', async () => {
+    const planets = [
+      {
+        _id: 'planet-2',
+        name: 'Ice World',
+        starSystemId: 'system-2',
+        type: 'ice',
+        radius: 8,
+        resources: { water: 0.9 },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+    const lean = jest.fn().mockResolvedValue(planets);
+    const limit = jest.fn().mockReturnValue({ lean });
+    const skip = jest.fn().mockReturnValue({ limit });
+    const sort = jest.fn().mockReturnValue({ skip });
+    const select = jest.fn().mockReturnValue({ sort });
+    planetModel.find.mockReturnValue({ select });
+    planetModel.countDocuments.mockResolvedValue(42);
+
+    await expect(service.listPlanets({ page: 3, count: 10 })).resolves.toEqual({
+      items: planets,
+      total: 42,
+      page: 3,
+      count: 10,
+    });
+    expect(skip).toHaveBeenCalledWith(20);
+    expect(limit).toHaveBeenCalledWith(10);
   });
 
   it('returns entity counts for admin statistics', async () => {
