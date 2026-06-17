@@ -209,8 +209,7 @@ describe('AdminService', () => {
           {
             id: 'planet-1',
             name: 'Terra',
-            x: 0,
-            y: 0,
+            distanceFromStar: 100,
             radius: 10,
             type: 'rocky',
             resources: { iron: 0.5 },

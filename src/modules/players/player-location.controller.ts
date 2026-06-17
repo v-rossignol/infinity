@@ -44,11 +44,15 @@ export class PlayerLocationController {
   @HttpCode(200)
   async enterStarSystem(@Req() req: AuthenticatedRequest, @Body() dto: EnterStarSystemDto) {
     const player = await this.resolvePlayer(req.user.id);
-    const updated = await this.playerLocationService.transitionTo(player.id, {
-      type: 'enterStarSystem',
-      starSystemId: dto.starSystemId,
-      position: { x: dto.x, y: dto.y },
-    });
+    const updated = await this.playerLocationService.transitionTo(
+      player.id,
+      {
+        type: 'enterStarSystem',
+        starSystemId: dto.starSystemId,
+        position: { x: dto.x, y: dto.y },
+      },
+      { adminBypass: req.user.role === 'admin' },
+    );
     return { player: updated };
   }
 

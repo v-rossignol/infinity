@@ -22,8 +22,7 @@ describe('PlanetsService', () => {
   const summary = {
     id: planetId,
     name: 'Planet 1',
-    x: 100,
-    y: 0,
+    distanceFromStar: 100,
     radius: 5,
     type: 'rocky',
     resources: { iron: 100, gold: 50, water: 200 },

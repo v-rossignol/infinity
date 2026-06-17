@@ -122,7 +122,7 @@ describe('PlayerSpawnService', () => {
       _id: starId,
       name: star.name,
       planets: [
-        { id: planetId, name: 'Planet 1', x: 0, y: 0, radius: 9, type: 'rocky', resources: {} },
+        { id: planetId, name: 'Planet 1', distanceFromStar: 100, radius: 9, type: 'rocky', resources: {} },
       ],
     });
     mockPlanetsService.getPlanet.mockResolvedValue(planet);
@@ -158,14 +158,14 @@ describe('PlayerSpawnService', () => {
         return {
           _id: starId,
           planets: [
-            { id: planetId, type: 'gas', radius: 9, name: 'Gas', x: 0, y: 0, resources: {} },
+            { id: planetId, type: 'gas', radius: 9, name: 'Gas', distanceFromStar: 100, resources: {} },
           ],
         };
       }
       return {
         _id: starB.id,
         planets: [
-          { id: planetBId, type: 'rocky', radius: 7, name: 'Rocky', x: 0, y: 0, resources: {} },
+          { id: planetBId, type: 'rocky', radius: 7, name: 'Rocky', distanceFromStar: 120, resources: {} },
         ],
       };
     });

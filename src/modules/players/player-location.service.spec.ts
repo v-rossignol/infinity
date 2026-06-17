@@ -227,6 +227,50 @@ describe('PlayerLocationService', () => {
       expect(result.location).not.toHaveProperty('starSystem');
     });
 
+    it('admin enterStarSystem relocates from any depth', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
+      starService.findById.mockResolvedValue({
+        id: starSystemId,
+        cube_id: cubeId,
+      });
+      starSystemService.getStarSystem.mockResolvedValue({ planets: [] });
+
+      const result = await service.transitionTo(
+        playerId,
+        {
+          type: 'enterStarSystem',
+          starSystemId,
+          position: { x: 50, y: 60 },
+        },
+        { adminBypass: true },
+      );
+
+      expect(result.location).toEqual(
+        buildStarSystemLocation({
+          cubeId,
+          starSystemId,
+          position: { x: 50, y: 60 },
+        }),
+      );
+    });
+
+    it('admin enterStarSystem rejects missing star with NotFoundException', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
+      starService.findById.mockResolvedValue(null);
+
+      await expect(
+        service.transitionTo(
+          playerId,
+          {
+            type: 'enterStarSystem',
+            starSystemId,
+            position: { x: 0, y: 0 },
+          },
+          { adminBypass: true },
+        ),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
     it('rejects enterStarSystem when not at cube depth', async () => {
       repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
 

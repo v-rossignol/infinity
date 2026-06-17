@@ -53,7 +53,7 @@ There is **no** embedded `stars[]` field. Load the parent star separately via `G
 |-------|------|-------------|
 | `id` | string | `{starId}_planet_{index}` — links to detailed `Planet` documents |
 | `name` | string | Display name (e.g. `Alpha CesLufTop I`) |
-| `x`, `y` | number | Local 2D position in the system view |
+| `distanceFromStar` | integer | Unique orbital distance from the star (map units) |
 | `radius` | number | Hex grid edge length — **odd integer** from **5** to **15** |
 | `type` | string | `rocky`, `gas`, `ice`, or `lava` |
 | `resources` | Record<string, number> | Summary quantities (`iron`, `gold`, `water`, …) |
@@ -72,8 +72,7 @@ Unlike [cube](./cube.md) and [star](./star.md) responses, the enter-star endpoin
     {
       "id": "661e8400-e29b-41d4-a716-446655440001_planet_0",
       "name": "Alpha CesLufTop I",
-      "x": 145.2,
-      "y": 34.8,
+      "distanceFromStar": 145,
       "radius": 11,
       "type": "rocky",
       "resources": { "iron": 420, "gold": 75, "water": 1300 }
@@ -129,8 +128,7 @@ erDiagram
   PLANET_SUMMARY {
     string id
     string name
-    number x
-    number y
+    number distanceFromStar
   }
 ```
 
@@ -168,15 +166,15 @@ First-time generation is handled by `StarSystemService.generateStarSystem()` and
 
 | Generated value | Rule in code |
 |-----------------|--------------|
-| Planet count | `Math.floor(noise.perlin2(1, 0) * 5) + 3` |
+| Planet count | **3–7** via `rollPlanetCount()` — fractional Perlin sample `perlin2(1.37, 0.83)`, normalized to `[0, 1]` |
 | Planet id | `{seed}_planet_{index}` |
 | Planet name | `{Greek} {cubeNameNoSpaces} {Roman}` via `getPlanetName(star.name, index + 1)` — e.g. `Alpha CesLufTop I` |
-| Planet position | Random angle; distance `100 + noise.perlin2(index, 1) * 50` from center `(0, 0)` |
+| Planet distance | Unique integer in **[100, 150]** via `rollUniquePlanetOrbitDistances()` — inner → outer by planet index |
 | Planet radius | Odd integer **5–15** via `rollOddPlanetRadius()` (`PLANET_RADIUS_MIN` / `MAX`) |
 | Planet type | Random `rocky`, `gas`, `ice`, `lava` |
 | Planet resources | `iron`, `gold`, `water` via `Math.floor(Math.random() * max)` |
 
-With the current `noisejs` dependency, integer Perlin coordinates return `0`, so the effective layout is **3 planets** at orbit distance **100** from center; types, radius, resources, and orbit angles vary per run.
+Planet count is **seed-stable** (same star UUID → same count). Types, radius, and resources still vary per run until the system is saved.
 
 ---
 

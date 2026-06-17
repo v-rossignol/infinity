@@ -13,8 +13,7 @@ export class StarSystem {
   planets: Array<{
     id: string;
     name: string;
-    x: number;
-    y: number;
+    distanceFromStar: number;
     radius: number;
     type: string;
     resources: Record<string, number>;

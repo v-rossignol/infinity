@@ -51,7 +51,7 @@ Procedural generation uses **`_id`** as the surface seed (no separate `seed` fie
 | `surface` | object | yes | Generated | Nested **`PlanetSurface`** (hex layer) |
 | `createdAt` / `updatedAt` | Date | automatic | Mongoose | Timestamps |
 
-**Not on `Planet`:** `x`, `y` (orbital layout on star-system summary only), `visited`, `seed`, `heightMap`, `tileMap`, `biomeTypes`.
+**Not on `Planet`:** `distanceFromStar` (orbital distance on star-system summary only), `visited`, `seed`, `heightMap`, `tileMap`, `biomeTypes`.
 
 ### PlanetSurface (`surface`)
 

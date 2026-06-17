@@ -7,8 +7,7 @@ interface StarSystemGenerationData {
   planets: Array<{
     id: string;
     name: string;
-    x: number;
-    y: number;
+    distanceFromStar: number;
     radius: number;
     type: string;
     resources: Record<string, number>;
@@ -27,6 +26,43 @@ export const rollOddPlanetRadius = (random: () => number = Math.random): number 
   return Math.floor(random() * slotCount) * 2 + PLANET_RADIUS_MIN;
 };
 
+/** Unique integer orbital distances in [PLANET_ORBIT_DISTANCE_MIN, PLANET_ORBIT_DISTANCE_MAX], sorted inner → outer. */
+export const rollUniquePlanetOrbitDistances = (
+  planetCount: number,
+  random: () => number = Math.random,
+): number[] => {
+  const { PLANET_ORBIT_DISTANCE_MIN, PLANET_ORBIT_DISTANCE_MAX } = GAME_CONSTANTS;
+  const span = PLANET_ORBIT_DISTANCE_MAX - PLANET_ORBIT_DISTANCE_MIN + 1;
+
+  if (planetCount > span) {
+    throw new Error(
+      `Cannot assign ${planetCount} unique orbit distances in [${PLANET_ORBIT_DISTANCE_MIN}, ${PLANET_ORBIT_DISTANCE_MAX}]`,
+    );
+  }
+
+  const pool = Array.from(
+    { length: span },
+    (_, index) => PLANET_ORBIT_DISTANCE_MIN + index,
+  );
+
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  return pool.slice(0, planetCount).sort((left, right) => left - right);
+};
+
+/** Planet count in [PLANET_COUNT_MIN, PLANET_COUNT_MAX], seeded from fractional Perlin sample. */
+export const rollPlanetCount = (noise: Noise): number => {
+  const { PLANET_COUNT_MIN, PLANET_COUNT_MAX } = GAME_CONSTANTS;
+  const span = PLANET_COUNT_MAX - PLANET_COUNT_MIN + 1;
+  const sample = noise.perlin2(1.37, 0.83);
+  const normalized = (sample + 1) / 2;
+
+  return Math.min(PLANET_COUNT_MAX, Math.floor(normalized * span) + PLANET_COUNT_MIN);
+};
+
 const createNoise = (seed: string): Noise => {
   const noise = new Noise();
   noise.seed(seed.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
@@ -39,16 +75,14 @@ export const generateStarSystem = (
   const { seed, starName } = options;
   const noise = createNoise(seed);
 
-  const planetCount = Math.floor(noise.perlin2(1, 0) * 5) + 3;
+  const planetCount = rollPlanetCount(noise);
+  const orbitDistances = rollUniquePlanetOrbitDistances(planetCount);
   const planets = [];
   for (let i = 0; i < planetCount; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const distance = 100 + noise.perlin2(i, 1) * 50;
     planets.push({
       id: `${seed}_planet_${i}`,
       name: getPlanetName(starName, i + 1),
-      x: Math.cos(angle) * distance,
-      y: Math.sin(angle) * distance,
+      distanceFromStar: orbitDistances[i],
       radius: rollOddPlanetRadius(),
       type: ['rocky', 'gas', 'ice', 'lava'][Math.floor(Math.random() * 4)],
       resources: {

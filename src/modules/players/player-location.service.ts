@@ -115,7 +115,7 @@ export class PlayerLocationService {
 
     switch (transition.type) {
       case 'enterStarSystem':
-        return this.transitionEnterStarSystem(player, transition);
+        return this.transitionEnterStarSystem(player, transition, options);
       case 'enterPlanet':
         return this.transitionEnterPlanet(player, transition, options);
       case 'leavePlanet':
@@ -132,13 +132,38 @@ export class PlayerLocationService {
   private transitionEnterStarSystem(
     player: Player,
     transition: Extract<LocationTransition, { type: 'enterStarSystem' }>,
+    options?: LocationTransitionOptions,
   ): Promise<Player> {
+    if (options?.adminBypass) {
+      return this.adminRelocateToStarSystem(player, transition);
+    }
+
     if (!player.location || !isPlayerLocationInCube(player.location)) {
       throw new ConflictException('Player must be at cube depth to enter a star system');
     }
 
     const location = buildStarSystemLocation({
       cubeId: player.location.cube.id,
+      starSystemId: transition.starSystemId,
+      position: transition.position,
+    });
+
+    return this.saveLocation(player, location);
+  }
+
+  private async adminRelocateToStarSystem(
+    player: Player,
+    transition: Extract<LocationTransition, { type: 'enterStarSystem' }>,
+  ): Promise<Player> {
+    const star = await this.starService.findById(transition.starSystemId);
+    if (!star) {
+      throw new NotFoundException(`Star "${transition.starSystemId}" not found`);
+    }
+
+    await this.starSystemService.getStarSystem(transition.starSystemId);
+
+    const location = buildStarSystemLocation({
+      cubeId: star.cube_id,
       starSystemId: transition.starSystemId,
       position: transition.position,
     });

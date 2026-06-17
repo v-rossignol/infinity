@@ -17,8 +17,7 @@ export class NoRockyPlanetError extends Error {
 export type PlanetSummary = {
   id: string;
   name: string;
-  x: number;
-  y: number;
+  distanceFromStar: number;
   radius: number;
   type: string;
   resources: Record<string, number>;

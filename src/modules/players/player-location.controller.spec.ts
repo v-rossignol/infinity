@@ -130,11 +130,47 @@ describe('PlayerLocationController', () => {
       y: 20,
     });
 
-    expect(mockPlayerLocationService.transitionTo).toHaveBeenCalledWith(playerId, {
-      type: 'enterStarSystem',
-      starSystemId,
-      position: { x: 10, y: 20 },
-    });
+    expect(mockPlayerLocationService.transitionTo).toHaveBeenCalledWith(
+      playerId,
+      {
+        type: 'enterStarSystem',
+        starSystemId,
+        position: { x: 10, y: 20 },
+      },
+      { adminBypass: false },
+    );
+    expect(result).toEqual({ player: updated });
+  });
+
+  it('enterStarSystem enables admin bypass for admin users', async () => {
+    const updated = {
+      ...player,
+      location: buildStarSystemLocation({
+        cubeId,
+        starSystemId,
+        position: { x: 10, y: 20 },
+      }),
+    };
+    mockPlayerLocationService.transitionTo.mockResolvedValue(updated);
+
+    const result = await controller.enterStarSystem(
+      { user: { id: userId, username: 'admin', role: 'admin' } } as never,
+      {
+        starSystemId,
+        x: 10,
+        y: 20,
+      },
+    );
+
+    expect(mockPlayerLocationService.transitionTo).toHaveBeenCalledWith(
+      playerId,
+      {
+        type: 'enterStarSystem',
+        starSystemId,
+        position: { x: 10, y: 20 },
+      },
+      { adminBypass: true },
+    );
     expect(result).toEqual({ player: updated });
   });
 

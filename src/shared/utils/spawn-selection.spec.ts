@@ -18,8 +18,7 @@ const star = (id: string): StarData => ({
 const summary = (id: string, type: string, radius: number): PlanetSummary => ({
   id,
   name: id,
-  x: 0,
-  y: 0,
+  distanceFromStar: 100,
   radius,
   type,
   resources: { iron: 100 },
