@@ -198,6 +198,9 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/players/:userId` | GET | public |
 | `/infinity/players/me/location` | PATCH | JWT |
 | `/infinity/players/me/location/*` | POST/PATCH | JWT (transitions + depth moves) |
+| `/infinity/players/me/can-enter/cube/:cubeId` | GET | JWT |
+| `/infinity/players/me/can-enter/system/:starSystemId` | GET | JWT |
+| `/infinity/players/me/can-enter/planet/:planetId` | GET | JWT |
 | `/infinity/cubes/:x/:y/:z` | GET | JWT |
 | `/infinity/cubes/:x/:y/:z/stars` | GET | JWT |
 | `/infinity/cubes/by-name/:name` | GET | JWT |

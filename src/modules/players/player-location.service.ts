@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -26,11 +28,16 @@ import {
 } from '../../shared/utils/player-location';
 import { StarService } from '../galaxy/star.service';
 import { StarSystemService } from '../galaxy/star-system.service';
+import { PlanetsService } from '../planets/planets.service';
 import { parseStarSystemIdFromPlanetId } from '../../shared/utils/planet-id';
 import { Player } from './entities/player.entity';
 
 export interface LocationTransitionOptions {
   adminBypass?: boolean;
+}
+
+export interface CanEnterOptions {
+  isAdmin?: boolean;
 }
 
 @Injectable()
@@ -40,11 +47,60 @@ export class PlayerLocationService {
     private readonly playersRepository: Repository<Player>,
     private readonly starService: StarService,
     private readonly starSystemService: StarSystemService,
+    @Inject(forwardRef(() => PlanetsService))
+    private readonly planetsService: PlanetsService,
   ) {}
 
   async getLocation(playerId: string): Promise<PlayerLocation | null> {
     const player = await this.findPlayerOrThrow(playerId);
     return player.location;
+  }
+
+  async canEnterCube(
+    playerId: string,
+    cubeId: string,
+    options?: CanEnterOptions,
+  ): Promise<boolean> {
+    if (options?.isAdmin) {
+      return true;
+    }
+
+    const player = await this.findPlayerOrThrow(playerId);
+    return player.location?.cube.id === cubeId;
+  }
+
+  async canEnterStarSystem(
+    playerId: string,
+    starSystemId: string,
+    options?: CanEnterOptions,
+  ): Promise<boolean> {
+    if (options?.isAdmin) {
+      return true;
+    }
+
+    const player = await this.findPlayerOrThrow(playerId);
+    if (!player.location || !('starSystem' in player.location)) {
+      return false;
+    }
+
+    return player.location.starSystem.id === starSystemId;
+  }
+
+  async canEnterPlanet(
+    playerId: string,
+    planetId: string,
+    options?: CanEnterOptions,
+  ): Promise<boolean> {
+    if (options?.isAdmin) {
+      return true;
+    }
+
+    const player = await this.findPlayerOrThrow(playerId);
+    if (!player.location || !('planet' in player.location)) {
+      return false;
+    }
+
+    return player.location.planet.id === planetId;
   }
 
   async setLocation(playerId: string, location: PlayerLocation | null): Promise<Player> {
@@ -219,6 +275,8 @@ export class PlayerLocationService {
     if (summary.type === 'gas') {
       throw new UnprocessableEntityException('Gas planets have no enterable surface');
     }
+
+    await this.planetsService.getPlanet(transition.planetId, starSystemId);
 
     const location = buildPlanetLocation({
       cubeId: star.cube_id,

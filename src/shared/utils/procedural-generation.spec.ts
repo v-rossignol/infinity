@@ -1,6 +1,12 @@
 import { GAME_CONSTANTS } from '../constants/game.constants';
 import { getPlanetName } from './planet-naming';
-import { generatePlanet, generateStarSystem, rollOddPlanetRadius, rollPlanetCount, rollUniquePlanetOrbitDistances } from './procedural-generation';
+import {
+  generatePlanet,
+  generateStarSystem,
+  rollOddPlanetRadius,
+  rollPlanetCount,
+  rollUniquePlanetOrbitDistances,
+} from './procedural-generation';
 import { Noise } from 'noisejs';
 
 describe('procedural-generation', () => {

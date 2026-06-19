@@ -15,6 +15,7 @@ import { Player } from './entities/player.entity';
 import { PlayerLocationService } from './player-location.service';
 import { StarService } from '../galaxy/star.service';
 import { StarSystemService } from '../galaxy/star-system.service';
+import { PlanetsService } from '../planets/planets.service';
 
 describe('PlayerLocationService', () => {
   const playerId = 'player-uuid';
@@ -44,6 +45,7 @@ describe('PlayerLocationService', () => {
   let repository: { findOneBy: jest.Mock; save: jest.Mock };
   let starService: { findById: jest.Mock };
   let starSystemService: { getStarSystem: jest.Mock };
+  let planetsService: { getPlanet: jest.Mock };
 
   const savePlayer = (location: Player['location']): Player =>
     ({
@@ -65,6 +67,9 @@ describe('PlayerLocationService', () => {
     starSystemService = {
       getStarSystem: jest.fn(),
     };
+    planetsService = {
+      getPlanet: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -72,6 +77,7 @@ describe('PlayerLocationService', () => {
         { provide: getRepositoryToken(Player), useValue: repository },
         { provide: StarService, useValue: starService },
         { provide: StarSystemService, useValue: starSystemService },
+        { provide: PlanetsService, useValue: planetsService },
       ],
     }).compile();
 
@@ -82,6 +88,95 @@ describe('PlayerLocationService', () => {
     repository.findOneBy.mockResolvedValue(savePlayer(null));
 
     await expect(service.getLocation(playerId)).resolves.toBeNull();
+  });
+
+  describe('canEnter', () => {
+    it('canEnterCube returns true for admin regardless of location', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(null));
+
+      await expect(service.canEnterCube(playerId, cubeId, { isAdmin: true })).resolves.toBe(true);
+      expect(repository.findOneBy).not.toHaveBeenCalled();
+    });
+
+    it('canEnterCube returns true when player is in the target cube', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
+
+      await expect(service.canEnterCube(playerId, cubeId)).resolves.toBe(true);
+    });
+
+    it('canEnterCube returns false when player is in another cube', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
+
+      await expect(service.canEnterCube(playerId, 'other-cube')).resolves.toBe(false);
+    });
+
+    it('canEnterCube returns false for freshy players', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(null));
+
+      await expect(service.canEnterCube(playerId, cubeId)).resolves.toBe(false);
+    });
+
+    it('canEnterStarSystem returns true for admin regardless of location', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(cubeDepth));
+
+      await expect(
+        service.canEnterStarSystem(playerId, starSystemId, { isAdmin: true }),
+      ).resolves.toBe(true);
+      expect(repository.findOneBy).not.toHaveBeenCalled();
+    });
+
+    it('canEnterStarSystem returns true when player is in the target system', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(starSystemDepth));
+
+      await expect(service.canEnterStarSystem(playerId, starSystemId)).resolves.toBe(true);
+    });
+
+    it('canEnterStarSystem returns true when player is on a planet in the target system', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
+
+      await expect(service.canEnterStarSystem(playerId, starSystemId)).resolves.toBe(true);
+    });
+
+    it('canEnterStarSystem returns false when player is at cube depth only', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(cubeDepth));
+
+      await expect(service.canEnterStarSystem(playerId, starSystemId)).resolves.toBe(false);
+    });
+
+    it('canEnterStarSystem returns false when player is in another system', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(starSystemDepth));
+
+      await expect(service.canEnterStarSystem(playerId, 'other-star')).resolves.toBe(false);
+    });
+
+    it('canEnterPlanet returns true for admin regardless of location', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(cubeDepth));
+
+      await expect(service.canEnterPlanet(playerId, planetId, { isAdmin: true })).resolves.toBe(
+        true,
+      );
+      expect(repository.findOneBy).not.toHaveBeenCalled();
+    });
+
+    it('canEnterPlanet returns true when player is on the target planet', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
+
+      await expect(service.canEnterPlanet(playerId, planetId)).resolves.toBe(true);
+    });
+
+    it('canEnterPlanet returns false when player is at star system depth', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(starSystemDepth));
+
+      await expect(service.canEnterPlanet(playerId, planetId)).resolves.toBe(false);
+    });
+
+    it('canEnterPlanet returns false when player is on another planet', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
+
+      await expect(service.canEnterPlanet(playerId, `${starSystemId}_planet_1`)).resolves.toBe(
+        false,
+      );
+    });
   });
 
   it('setLocation persists a valid planet-depth location', async () => {
@@ -292,6 +387,7 @@ describe('PlayerLocationService', () => {
       starSystemService.getStarSystem.mockResolvedValue({
         planets: [{ id: planetId, type: 'rocky', radius: 7 }],
       });
+      planetsService.getPlanet.mockResolvedValue({ _id: planetId, radius: 7 });
 
       const result = await service.transitionTo(
         playerId,
@@ -303,6 +399,7 @@ describe('PlayerLocationService', () => {
         { adminBypass: true },
       );
 
+      expect(planetsService.getPlanet).toHaveBeenCalledWith(planetId, starSystemId);
       expect(result.location).toEqual(
         buildPlanetLocation({
           cubeId,

@@ -47,10 +47,7 @@ export interface PaginatedAdminPlanets {
   count: number;
 }
 
-export type AdminStarSystemSummary = Pick<
-  StarSystem,
-  '_id' | 'name' | 'planets' | 'visited'
-> & {
+export type AdminStarSystemSummary = Pick<StarSystem, '_id' | 'name' | 'planets' | 'visited'> & {
   createdAt: Date;
   updatedAt: Date;
 };

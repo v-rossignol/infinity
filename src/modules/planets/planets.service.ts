@@ -1,6 +1,8 @@
 import {
   BadRequestException,
   ConflictException,
+  forwardRef,
+  Inject,
   Injectable,
   NotFoundException,
   UnprocessableEntityException,
@@ -28,6 +30,7 @@ export class PlanetsService {
     private planetModel: Model<Planet>,
     private readonly starSystemService: StarSystemService,
     private readonly starService: StarService,
+    @Inject(forwardRef(() => PlayerLocationService))
     private readonly playerLocationService: PlayerLocationService,
   ) {}
 
@@ -133,6 +136,17 @@ export class PlanetsService {
       surface,
     });
 
-    return planet.save();
+    try {
+      return await planet.save();
+    } catch (error) {
+      // Concurrent first loads can both pass findById; the loser's insert hits E11000.
+      if ((error as { code?: number }).code === 11000) {
+        const raced = await this.planetModel.findById(planetId).exec();
+        if (raced) {
+          return raced;
+        }
+      }
+      throw error;
+    }
   }
 }

@@ -68,7 +68,8 @@ Resolution flow:
 2. Load star → `cube_id`.
 3. Load star system (lazy-generate if star exists).
 4. Find planet summary; reject gas planets.
-5. `buildPlanetLocation()` + persist.
+5. Materialize the MongoDB planet document if missing (`PlanetsService.getPlanet(planetId, starSystemId)`).
+6. `buildPlanetLocation()` + persist.
 
 ### Response (unchanged)
 
@@ -81,7 +82,7 @@ Resolution flow:
 | File | Change |
 |------|--------|
 | [`player-location.controller.ts`](../src/modules/players/player-location.controller.ts) | Pass `{ adminBypass: req.user.role === 'admin' }` to `transitionTo` |
-| [`player-location.service.ts`](../src/modules/players/player-location.service.ts) | `adminRelocateToPlanet()` branch; injects `StarService`, `StarSystemService` |
+| [`player-location.service.ts`](../src/modules/players/player-location.service.ts) | `adminRelocateToPlanet()` branch; injects `StarService`, `StarSystemService`, `PlanetsService` |
 | [`planet-id.ts`](../src/shared/utils/planet-id.ts) | Parse star id from procedural planet id |
 
 OpenAPI: [contracts/game-api.yaml](../../contracts/game-api.yaml) — `enter-planet` description updated.

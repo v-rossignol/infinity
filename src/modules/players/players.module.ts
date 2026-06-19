@@ -4,6 +4,7 @@ import { AuthModule } from '../auth/auth.module';
 import { GalaxyModule } from '../galaxy/galaxy.module';
 import { PlanetsModule } from '../planets/planets.module';
 import { Player } from './entities/player.entity';
+import { PlayerCanEnterController } from './player-can-enter.controller';
 import { PlayerLocationController } from './player-location.controller';
 import { PlayerLocationService } from './player-location.service';
 import { PlayerSpawnService } from './player-spawn.service';
@@ -17,7 +18,7 @@ import { PlayersController } from './players.controller';
     forwardRef(() => GalaxyModule),
     forwardRef(() => PlanetsModule),
   ],
-  controllers: [PlayersController, PlayerLocationController],
+  controllers: [PlayersController, PlayerLocationController, PlayerCanEnterController],
   providers: [PlayersService, PlayerLocationService, PlayerSpawnService],
   exports: [PlayersService, PlayerLocationService, PlayerSpawnService],
 })

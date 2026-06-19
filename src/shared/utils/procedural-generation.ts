@@ -40,10 +40,7 @@ export const rollUniquePlanetOrbitDistances = (
     );
   }
 
-  const pool = Array.from(
-    { length: span },
-    (_, index) => PLANET_ORBIT_DISTANCE_MIN + index,
-  );
+  const pool = Array.from({ length: span }, (_, index) => PLANET_ORBIT_DISTANCE_MIN + index);
 
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(random() * (i + 1));

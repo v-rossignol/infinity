@@ -7,7 +7,10 @@ import {
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { buildPlanetLocation } from '../../shared/utils/player-location';
-import { getPlanetHexCount } from '../../shared/utils/planet-surface-generation';
+import {
+  getPlanetGridHeight,
+  getPlanetHexCount,
+} from '../../shared/utils/planet-surface-generation';
 import { StarService } from '../galaxy/star.service';
 import { StarSystemService } from '../galaxy/star-system.service';
 import { PlayerLocationService } from '../players/player-location.service';
@@ -110,6 +113,22 @@ describe('PlanetsService', () => {
     );
   });
 
+  it('returns the existing planet when a concurrent save hits E11000', async () => {
+    const raced = { _id: planetId, name: summary.name };
+    const exec = jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(raced);
+    findById.mockReturnValue({ exec });
+    mockStarSystemService.getStarSystem.mockResolvedValue({ planets: [summary] });
+
+    PlanetModel.mockImplementationOnce((doc) => {
+      const instance = { ...doc };
+      instance.save = jest.fn().mockRejectedValue({ code: 11000 });
+      return instance;
+    });
+
+    await expect(service.getPlanet(planetId, starSystemId)).resolves.toBe(raced);
+    expect(exec).toHaveBeenCalledTimes(2);
+  });
+
   it('creates a landable planet with inherited summary fields', async () => {
     findById.mockReturnValue({ exec: jest.fn().mockResolvedValue(null) });
     mockStarSystemService.getStarSystem.mockResolvedValue({ planets: [summary] });
@@ -195,7 +214,7 @@ describe('PlanetsService', () => {
       expect(position.q).toBeGreaterThanOrEqual(0);
       expect(position.q).toBeLessThan(5);
       expect(position.r).toBeGreaterThanOrEqual(0);
-      expect(position.r).toBeLessThan(5);
+      expect(position.r).toBeLessThan(getPlanetGridHeight(5));
       expect(mockPlayerLocationService.setLocation).toHaveBeenCalledWith(
         playerId,
         buildPlanetLocation({
