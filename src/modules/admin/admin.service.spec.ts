@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { getPlanetHexCount } from '../../shared/utils/planet-surface-generation';
 import { AdminService } from './admin.service';
+import { PlanetPreviewCacheService } from '../planets/planet-preview-cache.service';
 import { User } from '../auth/entities/user.entity';
 import { Cube } from '../galaxy/entities/cube.schema';
 import { StarSystem } from '../galaxy/entities/star-system.schema';
@@ -33,6 +34,11 @@ describe('AdminService', () => {
     find: jest.fn(),
   };
 
+  const planetPreviewCacheService = {
+    getByParams: jest.fn(),
+    save: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -54,6 +60,10 @@ describe('AdminService', () => {
         {
           provide: getModelToken(Planet.name),
           useValue: planetModel,
+        },
+        {
+          provide: PlanetPreviewCacheService,
+          useValue: planetPreviewCacheService,
         },
       ],
     }).compile();
@@ -132,8 +142,10 @@ describe('AdminService', () => {
     });
   });
 
-  it('generates a preview planet with defaults', () => {
-    const preview = service.generatePlanetPreview();
+  it('generates a preview planet with defaults', async () => {
+    planetPreviewCacheService.getByParams.mockResolvedValue(null);
+
+    const preview = await service.generatePlanetPreview();
 
     expect(preview.name).toBe('Preview Planet');
     expect(preview.type).toBe('rocky');
@@ -141,17 +153,40 @@ describe('AdminService', () => {
     expect(preview._id).toEqual(expect.any(String));
     expect(preview.surface.hexagons).toHaveLength(getPlanetHexCount(10));
     expect(preview.surface.generatedAt).toBeInstanceOf(Date);
+    expect(planetPreviewCacheService.save).toHaveBeenCalledWith(preview);
   });
 
-  it('generates a deterministic preview planet from seed', () => {
-    const first = service.generatePlanetPreview({ seed: 'fixed-seed', radius: 8, type: 'ice' });
-    const second = service.generatePlanetPreview({ seed: 'fixed-seed', radius: 8, type: 'ice' });
+  it('generates a deterministic preview planet from seed', async () => {
+    planetPreviewCacheService.getByParams.mockResolvedValue(null);
+
+    const first = await service.generatePlanetPreview({ seed: 'fixed-seed', radius: 8, type: 'ice' });
+    const second = await service.generatePlanetPreview({ seed: 'fixed-seed', radius: 8, type: 'ice' });
 
     expect(first).toEqual(second);
     expect(first._id).toBe('fixed-seed');
     expect(first.type).toBe('ice');
     expect(first.radius).toBe(8);
     expect(first.surface.hexagons).toHaveLength(getPlanetHexCount(8));
+    expect(planetPreviewCacheService.save).toHaveBeenCalledTimes(2);
+  });
+
+  it('returns a cached preview planet when redis has an entry', async () => {
+    const cachedPreview = {
+      _id: 'fixed-seed',
+      name: 'Preview Planet',
+      type: 'ice' as const,
+      radius: 8,
+      surface: {
+        hexagons: [],
+        generatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      },
+    };
+    planetPreviewCacheService.getByParams.mockResolvedValue(cachedPreview);
+
+    const preview = await service.generatePlanetPreview({ seed: 'fixed-seed', radius: 8, type: 'ice' });
+
+    expect(preview).toEqual(cachedPreview);
+    expect(planetPreviewCacheService.save).not.toHaveBeenCalled();
   });
 
   it('lists planets without surface data using default pagination', async () => {

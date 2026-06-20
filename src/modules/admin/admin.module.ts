@@ -6,12 +6,14 @@ import { User } from '../auth/entities/user.entity';
 import { Cube, CubeSchema } from '../galaxy/entities/cube.schema';
 import { StarSystem, StarSystemSchema } from '../galaxy/entities/star-system.schema';
 import { Planet, PlanetSchema } from '../planets/entities/planet.schema';
+import { PlanetPreviewModule } from '../planets/planet-preview.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 
 @Module({
   imports: [
     AuthModule,
+    PlanetPreviewModule,
     TypeOrmModule.forFeature([User]),
     MongooseModule.forFeature([
       { name: Cube.name, schema: CubeSchema },

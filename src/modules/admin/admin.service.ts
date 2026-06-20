@@ -7,8 +7,9 @@ import { Repository } from 'typeorm';
 import { Cube } from '../galaxy/entities/cube.schema';
 import { StarSystem } from '../galaxy/entities/star-system.schema';
 import { Planet } from '../planets/entities/planet.schema';
+import { PlanetPreviewCacheService } from '../planets/planet-preview-cache.service';
 import { User } from '../auth/entities/user.entity';
-import { PlanetSurface, PlanetType } from '../../shared/interfaces/planet.interface';
+import { AdminGeneratedPlanetPreview } from '../../shared/interfaces/planet-preview.interface';
 import { generatePlanetSurface } from '../../shared/utils/planet-surface-generation';
 import {
   DEFAULT_GENERATE_PLANET_RADIUS,
@@ -74,13 +75,7 @@ export interface AdminStatistics {
   planets: number;
 }
 
-export interface AdminGeneratedPlanetPreview {
-  _id: string;
-  name: string;
-  type: Exclude<PlanetType, 'gas'>;
-  radius: number;
-  surface: PlanetSurface;
-}
+export type { AdminGeneratedPlanetPreview } from '../../shared/interfaces/planet-preview.interface';
 
 @Injectable()
 export class AdminService {
@@ -93,6 +88,7 @@ export class AdminService {
     private starSystemModel: Model<StarSystem>,
     @InjectModel(Planet.name)
     private planetModel: Model<Planet>,
+    private readonly planetPreviewCacheService: PlanetPreviewCacheService,
   ) {}
 
   async getUserById(userId: string): Promise<AdminUserSummary> {
@@ -122,19 +118,28 @@ export class AdminService {
     return { items, total, page, count };
   }
 
-  generatePlanetPreview(query: GeneratePlanetQueryDto = {}): AdminGeneratedPlanetPreview {
+  async generatePlanetPreview(
+    query: GeneratePlanetQueryDto = {},
+  ): Promise<AdminGeneratedPlanetPreview> {
     const radius = query.radius ?? DEFAULT_GENERATE_PLANET_RADIUS;
     const type = query.type ?? DEFAULT_GENERATE_PLANET_TYPE;
     const seed = query.seed ?? randomUUID();
-    const surface = generatePlanetSurface({ seed, radius, type });
+    const cached = await this.planetPreviewCacheService.getByParams(seed, radius, type);
+    if (cached) {
+      return cached;
+    }
 
-    return {
+    const preview: AdminGeneratedPlanetPreview = {
       _id: seed,
       name: 'Preview Planet',
       type,
       radius,
-      surface,
+      surface: generatePlanetSurface({ seed, radius, type }),
     };
+
+    await this.planetPreviewCacheService.save(preview);
+
+    return preview;
   }
 
   async listPlanets(query: ListPlanetsQueryDto = {}): Promise<PaginatedAdminPlanets> {

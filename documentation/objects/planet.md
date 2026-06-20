@@ -64,7 +64,7 @@ Procedural generation uses **`_id`** as the surface seed (no separate `seed` fie
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `biome` | string | `desert`, `forest`, `ocean`, `mountain`, `ice`, or `volcanic` |
+| `biome` | string | `desert`, `forest`, `ocean`, `mountain`, `ice`, `volcanic`, or `plain` |
 | `resources` | object[] | Per-hex deposits — **`[]` in current MVP** |
 | `dangerLevel` | number | Integer **0–10** |
 | `coordinates.q` | number | Axial coordinate; `0 ≤ q < radius` |

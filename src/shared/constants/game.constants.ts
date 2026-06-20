@@ -11,6 +11,6 @@ export const GAME_CONSTANTS = {
   RESOURCE_TYPES: ['iron', 'gold', 'water', 'crystal'] as const,
   STAR_TYPES: ['yellow', 'red', 'blue', 'white'] as const,
   PLANET_TYPES: ['rocky', 'gas', 'ice', 'lava'] as const,
-  HEX_BIOMES: ['desert', 'forest', 'ocean', 'mountain', 'ice', 'volcanic'] as const,
+  HEX_BIOMES: ['desert', 'forest', 'ocean', 'mountain', 'ice', 'volcanic', 'plain'] as const,
   RESOURCE_RARITIES: ['common', 'rare', 'epic', 'legendary'] as const,
 } as const;

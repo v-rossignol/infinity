@@ -77,7 +77,7 @@ describe('AdminController', () => {
         generatedAt: new Date('2026-01-01T00:00:00.000Z'),
       },
     };
-    mockAdminService.generatePlanetPreview.mockReturnValue(preview);
+    mockAdminService.generatePlanetPreview.mockResolvedValue(preview);
 
     const result = await controller.generatePlanet({
       seed: 'preview-seed',
