@@ -2,7 +2,7 @@
 
 Guidance for AI coding agents working on this repository.
 
-**Monorepo context:** [../AGENTS.md](../AGENTS.md) · **Game rules:** [../contracts/game-rules.md](../contracts/game-rules.md) · **OpenAPI:** [auth](../contracts/auth-api.yaml) · [admin](../contracts/admin-api.yaml) · [game](../contracts/game-api.yaml) · **AsyncAPI:** [../contracts/asyncapi.yaml](../contracts/asyncapi.yaml) · **DTO schemas:** [../contracts/schemas/](../contracts/schemas/) · **Known gaps:** [../documentation/TO-BE-FIXED.md](../documentation/TO-BE-FIXED.md) · **Server deferred work:** [documentation/TO-BE-FIXED.md](documentation/TO-BE-FIXED.md)
+**Monorepo context:** [../AGENTS.md](../AGENTS.md) · **Game rules:** [../contracts/game-rules.md](../contracts/game-rules.md) · **OpenAPI:** [auth](../contracts/auth-api.yaml) · [admin](../contracts/admin-api.yaml) · [game](../contracts/game-api.yaml) · **AsyncAPI:** [../contracts/asyncapi.yaml](../contracts/asyncapi.yaml) · **DTO schemas:** [../contracts/schemas/](../contracts/schemas/) · **Known gaps (user reference):** [../documentation/TO-BE-FIXED.md](../documentation/TO-BE-FIXED.md) · **Server deferred work (user reference):** [documentation/TO-BE-FIXED.md](documentation/TO-BE-FIXED.md)
 
 ---
 
@@ -116,6 +116,10 @@ E2E tests are optional locally but should be verified before merging features th
 
 See [rules/documents.md](../../rules/documents.md) for detailed documentation standards and object-document conventions.
 
+**Working directory:** Treat `documentation/` here and elsewhere in the monorepo as user-owned working directories. Do not read, search, or follow links into them unless the user explicitly references a path (e.g. `@infinity/documentation/objects/cube.md`). Use `../contracts/` and source code for implementation context.
+
+When the user asks you to write or edit docs:
+
 - Write project documentation in the `documentation/` directory as Markdown files
 - Domain object specs (cube, star, star-system, planet): [documentation/objects/](documentation/objects/)
 - Deprecated or superseded documents: [documentation/archive/](documentation/archive/)
@@ -209,6 +213,7 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/stars?cube_id={uuid}` | GET | JWT |
 | `/infinity/galaxy/systems/:systemId` | GET | JWT |
 | `/infinity/planets/:planetId` | GET | public |
+| `/infinity/resources/planet/:planetId/hex/:q/:r` | GET | public |
 | `/infinity/resources/planet/:planetId` | GET | public |
 
 REST OpenAPI: [auth-api.yaml](../contracts/auth-api.yaml), [admin-api.yaml](../contracts/admin-api.yaml), [game-api.yaml](../contracts/game-api.yaml). Socket.IO AsyncAPI: [asyncapi.yaml](../contracts/asyncapi.yaml). DTO JSON Schemas: [../contracts/schemas/](../contracts/schemas/). **API source of truth:** [../contracts/](../contracts/).
@@ -217,6 +222,7 @@ REST OpenAPI: [auth-api.yaml](../contracts/auth-api.yaml), [admin-api.yaml](../c
 
 ## Important Constraints
 
+- **Do not read `documentation/` proactively** — applies to this project's `documentation/` and every other `documentation/` directory in the monorepo unless the user cites an explicit path
 - Never create a git commit unless the user explicitly asks for it
 - Do **not** commit `.env` — only `.env.example`
 - Do **not** enable `synchronize: true` in production TypeORM config
