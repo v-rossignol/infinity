@@ -1,9 +1,5 @@
-import {
-  generatePlanetSurface,
-  getNeighbors,
-  getPlanetGridHeight,
-  getPlanetHexCount,
-} from './planet-surface-generation';
+import { PlanetSurfaceGeneratorFactory } from './planet-surface-generators/planet-surface-generator.factory';
+import { generatePlanetSurface, getNeighbors } from './planet-surface-generation';
 
 describe('planet-surface-generation', () => {
   describe('getNeighbors', () => {
@@ -31,23 +27,12 @@ describe('planet-surface-generation', () => {
   });
 
   describe('generatePlanetSurface', () => {
-    it('produces radius × (radius + 1) hexagons', () => {
-      const surface = generatePlanetSurface({ seed: 'test-planet-1', radius: 5 });
-      expect(surface.hexagons).toHaveLength(getPlanetHexCount(5));
-      expect(getPlanetGridHeight(5)).toBe(6);
-    });
-
-    it('assigns empty resources on every hex', () => {
-      const surface = generatePlanetSurface({ seed: 'test-planet-2', radius: 7 });
-      for (const hex of surface.hexagons) {
-        expect(hex.resources).toEqual([]);
-      }
-    });
-
-    it('covers each coordinate pair once for radius = 5', () => {
-      const surface = generatePlanetSurface({ seed: 'test-planet-3', radius: 5 });
-      const coords = surface.hexagons.map((hex) => `${hex.coordinates.q},${hex.coordinates.r}`);
-      expect(new Set(coords).size).toBe(getPlanetHexCount(5));
+    it('delegates to PlanetSurfaceGeneratorFactory', () => {
+      const options = { seed: 'facade-planet', radius: 5, type: 'rocky' as const };
+      const expected = PlanetSurfaceGeneratorFactory.create(options.type, options.radius).generate(
+        options,
+      );
+      expect(generatePlanetSurface(options).hexagons).toEqual(expected.hexagons);
     });
   });
 });

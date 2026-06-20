@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { getPlanetHexCount } from '../../shared/utils/planet-surface-generation';
 import { AdminService } from './admin.service';
 import { User } from '../auth/entities/user.entity';
 import { Cube } from '../galaxy/entities/cube.schema';
@@ -129,6 +130,28 @@ describe('AdminService', () => {
       skip: 20,
       take: 10,
     });
+  });
+
+  it('generates a preview planet with defaults', () => {
+    const preview = service.generatePlanetPreview();
+
+    expect(preview.name).toBe('Preview Planet');
+    expect(preview.type).toBe('rocky');
+    expect(preview.radius).toBe(10);
+    expect(preview._id).toEqual(expect.any(String));
+    expect(preview.surface.hexagons).toHaveLength(getPlanetHexCount(10));
+    expect(preview.surface.generatedAt).toBeInstanceOf(Date);
+  });
+
+  it('generates a deterministic preview planet from seed', () => {
+    const first = service.generatePlanetPreview({ seed: 'fixed-seed', radius: 8, type: 'ice' });
+    const second = service.generatePlanetPreview({ seed: 'fixed-seed', radius: 8, type: 'ice' });
+
+    expect(first).toEqual(second);
+    expect(first._id).toBe('fixed-seed');
+    expect(first.type).toBe('ice');
+    expect(first.radius).toBe(8);
+    expect(first.surface.hexagons).toHaveLength(getPlanetHexCount(8));
   });
 
   it('lists planets without surface data using default pagination', async () => {

@@ -13,6 +13,7 @@ import {
   PlanetHexPosition,
   PlanetMovePayload,
 } from '../../shared/interfaces/planet-position.interface';
+import { PlanetType } from '../../shared/interfaces/planet.interface';
 import { buildPlanetLocation, isPlayerLocationOnPlanet } from '../../shared/utils/player-location';
 import {
   generatePlanetSurface,
@@ -125,7 +126,11 @@ export class PlanetsService {
       throw new UnprocessableEntityException('Gas planets have no enterable surface');
     }
 
-    const surface = generatePlanetSurface({ seed: planetId, radius: summary.radius });
+    const surface = generatePlanetSurface({
+      seed: planetId,
+      radius: summary.radius,
+      type: summary.type as PlanetType,
+    });
     const planet = new this.planetModel({
       _id: summary.id,
       name: summary.name,

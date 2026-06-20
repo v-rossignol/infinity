@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -7,6 +8,13 @@ import { Cube } from '../galaxy/entities/cube.schema';
 import { StarSystem } from '../galaxy/entities/star-system.schema';
 import { Planet } from '../planets/entities/planet.schema';
 import { User } from '../auth/entities/user.entity';
+import { PlanetSurface, PlanetType } from '../../shared/interfaces/planet.interface';
+import { generatePlanetSurface } from '../../shared/utils/planet-surface-generation';
+import {
+  DEFAULT_GENERATE_PLANET_RADIUS,
+  DEFAULT_GENERATE_PLANET_TYPE,
+  GeneratePlanetQueryDto,
+} from './dto/generate-planet-query.dto';
 import {
   DEFAULT_LIST_PLANETS_COUNT,
   DEFAULT_LIST_PLANETS_PAGE,
@@ -66,6 +74,14 @@ export interface AdminStatistics {
   planets: number;
 }
 
+export interface AdminGeneratedPlanetPreview {
+  _id: string;
+  name: string;
+  type: Exclude<PlanetType, 'gas'>;
+  radius: number;
+  surface: PlanetSurface;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
@@ -104,6 +120,21 @@ export class AdminService {
     });
 
     return { items, total, page, count };
+  }
+
+  generatePlanetPreview(query: GeneratePlanetQueryDto = {}): AdminGeneratedPlanetPreview {
+    const radius = query.radius ?? DEFAULT_GENERATE_PLANET_RADIUS;
+    const type = query.type ?? DEFAULT_GENERATE_PLANET_TYPE;
+    const seed = query.seed ?? randomUUID();
+    const surface = generatePlanetSurface({ seed, radius, type });
+
+    return {
+      _id: seed,
+      name: 'Preview Planet',
+      type,
+      radius,
+      surface,
+    };
   }
 
   async listPlanets(query: ListPlanetsQueryDto = {}): Promise<PaginatedAdminPlanets> {

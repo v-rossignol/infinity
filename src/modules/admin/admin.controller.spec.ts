@@ -21,6 +21,7 @@ describe('AdminController', () => {
     listPlanets: jest.fn(),
     listStarSystems: jest.fn(),
     getStatistics: jest.fn(),
+    generatePlanetPreview: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -63,6 +64,33 @@ describe('AdminController', () => {
 
     expect(mockAdminService.listUsers).toHaveBeenCalledWith({ page: 1, count: 20 });
     expect(result).toEqual(paginatedUsers);
+  });
+
+  it('generates a preview planet', async () => {
+    const preview = {
+      _id: 'preview-seed',
+      name: 'Preview Planet',
+      type: 'rocky' as const,
+      radius: 10,
+      surface: {
+        hexagons: [],
+        generatedAt: new Date('2026-01-01T00:00:00.000Z'),
+      },
+    };
+    mockAdminService.generatePlanetPreview.mockReturnValue(preview);
+
+    const result = await controller.generatePlanet({
+      seed: 'preview-seed',
+      radius: 10,
+      type: 'rocky',
+    });
+
+    expect(mockAdminService.generatePlanetPreview).toHaveBeenCalledWith({
+      seed: 'preview-seed',
+      radius: 10,
+      type: 'rocky',
+    });
+    expect(result).toEqual(preview);
   });
 
   it('lists planets', async () => {

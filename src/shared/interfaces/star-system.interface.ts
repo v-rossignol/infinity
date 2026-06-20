@@ -1,9 +1,11 @@
+import { PlanetType } from './planet.interface';
+
 export interface SystemPlanet {
   id: string;
   name: string;
   distanceFromStar: number;
   radius: number;
-  type: string;
+  type: PlanetType;
   resources: Record<string, number>;
 }
 

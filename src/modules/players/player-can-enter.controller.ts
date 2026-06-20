@@ -31,11 +31,9 @@ export class PlayerCanEnterController {
     @Param('starSystemId') starSystemId: string,
   ) {
     const player = await this.resolvePlayer(req.user.id);
-    const canEnter = await this.playerLocationService.canEnterStarSystem(
-      player.id,
-      starSystemId,
-      { isAdmin: req.user.role === 'admin' },
-    );
+    const canEnter = await this.playerLocationService.canEnterStarSystem(player.id, starSystemId, {
+      isAdmin: req.user.role === 'admin',
+    });
     return { canEnter };
   }
 

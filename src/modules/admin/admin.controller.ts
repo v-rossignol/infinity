@@ -4,6 +4,7 @@ import { AdminGuard } from '../auth/guards/admin.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../../shared/interfaces/authenticated-user.interface';
 import { AdminService } from './admin.service';
+import { GeneratePlanetQueryDto } from './dto/generate-planet-query.dto';
 import { ListPlanetsQueryDto } from './dto/list-planets-query.dto';
 import { ListSystemsQueryDto } from './dto/list-systems-query.dto';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
@@ -25,6 +26,11 @@ export class AdminController {
   @Get('users')
   listUsers(@Query() query: ListUsersQueryDto) {
     return this.adminService.listUsers(query);
+  }
+
+  @Get('planets/generate')
+  generatePlanet(@Query() query: GeneratePlanetQueryDto) {
+    return this.adminService.generatePlanetPreview(query);
   }
 
   @Get('planets')
