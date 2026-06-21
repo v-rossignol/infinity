@@ -21,9 +21,7 @@ const createSeededRandom = (seed: string): (() => number) => {
   };
 };
 
-export const getIceOceanRowRange = (
-  height: number,
-): { start: number; end: number } | null => {
+export const getIceOceanRowRange = (height: number): { start: number; end: number } | null => {
   if (height <= 2) {
     return null;
   }

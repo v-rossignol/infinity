@@ -6,7 +6,7 @@ export interface TerrainResourceEntry {
   quantity: number;
 }
 
-/** Permanent resources from documentation/resources/resources.md */
+/** Permanent resources from contracts/resources.md */
 export const PERMANENT_TERRAIN_RESOURCES: Record<HexBiome, TerrainResourceEntry[]> = {
   plain: [
     { id: 'food', name: 'Food', quantity: 10 },

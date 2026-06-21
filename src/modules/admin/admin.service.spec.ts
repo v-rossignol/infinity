@@ -159,8 +159,16 @@ describe('AdminService', () => {
   it('generates a deterministic preview planet from seed', async () => {
     planetPreviewCacheService.getByParams.mockResolvedValue(null);
 
-    const first = await service.generatePlanetPreview({ seed: 'fixed-seed', radius: 8, type: 'ice' });
-    const second = await service.generatePlanetPreview({ seed: 'fixed-seed', radius: 8, type: 'ice' });
+    const first = await service.generatePlanetPreview({
+      seed: 'fixed-seed',
+      radius: 8,
+      type: 'ice',
+    });
+    const second = await service.generatePlanetPreview({
+      seed: 'fixed-seed',
+      radius: 8,
+      type: 'ice',
+    });
 
     expect(first).toEqual(second);
     expect(first._id).toBe('fixed-seed');
@@ -183,7 +191,11 @@ describe('AdminService', () => {
     };
     planetPreviewCacheService.getByParams.mockResolvedValue(cachedPreview);
 
-    const preview = await service.generatePlanetPreview({ seed: 'fixed-seed', radius: 8, type: 'ice' });
+    const preview = await service.generatePlanetPreview({
+      seed: 'fixed-seed',
+      radius: 8,
+      type: 'ice',
+    });
 
     expect(preview).toEqual(cachedPreview);
     expect(planetPreviewCacheService.save).not.toHaveBeenCalled();

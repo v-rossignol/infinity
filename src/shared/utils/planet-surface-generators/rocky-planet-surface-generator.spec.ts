@@ -78,7 +78,9 @@ describe('RockyPlanetSurfaceGenerator', () => {
     }
 
     const polarHexCount =
-      30 * radius * (ranges.top.end - ranges.top.start + ranges.bottom.end - ranges.bottom.start + 2);
+      30 *
+      radius *
+      (ranges.top.end - ranges.top.start + ranges.bottom.end - ranges.bottom.start + 2);
     expect(counts.ocean / polarHexCount).toBeCloseTo(0.28 / 0.88, 1);
     expect(counts.ice / polarHexCount).toBeCloseTo(0.05 / 0.88, 1);
     expect(counts.forest / polarHexCount).toBeCloseTo(0.22 / 0.88, 1);

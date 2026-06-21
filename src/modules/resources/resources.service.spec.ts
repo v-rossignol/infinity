@@ -116,9 +116,7 @@ describe('ResourcesService', () => {
         planetId: '1',
         coordinates: { q: 2, r: 1 },
         biome: 'forest',
-        resources: expect.arrayContaining([
-          { type: 'wood', abundance: 50, rarity: 'common' },
-        ]),
+        resources: expect.arrayContaining([{ type: 'wood', abundance: 50, rarity: 'common' }]),
       });
     });
 

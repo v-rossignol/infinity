@@ -34,10 +34,7 @@ describe('PlanetPreviewCacheService', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        PlanetPreviewCacheService,
-        { provide: RedisService, useValue: redisService },
-      ],
+      providers: [PlanetPreviewCacheService, { provide: RedisService, useValue: redisService }],
     }).compile();
 
     service = module.get(PlanetPreviewCacheService);

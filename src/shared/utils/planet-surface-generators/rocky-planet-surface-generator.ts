@@ -19,9 +19,7 @@ const createSeededRandom = (seed: string): (() => number) => {
   };
 };
 
-export const getRockyDesertRowRange = (
-  height: number,
-): { start: number; end: number } | null => {
+export const getRockyDesertRowRange = (height: number): { start: number; end: number } | null => {
   if (height <= 2) {
     return null;
   }
