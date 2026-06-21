@@ -10,6 +10,7 @@ import { GalaxyModule } from './modules/galaxy/galaxy.module';
 import { PlanetsModule } from './modules/planets/planets.module';
 import { ResourcesModule } from './modules/resources/resources.module';
 import { SocketModule } from './modules/socket/socket.module';
+import { UnitsModule } from './modules/units/units.module';
 import { getMongoUri, getPostgresConfig } from './config/database.config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -37,6 +38,7 @@ import { RequestLoggerMiddleware } from './shared/logger';
     GalaxyModule,
     PlanetsModule,
     ResourcesModule,
+    UnitsModule,
     SocketModule,
   ],
   controllers: [AppController],

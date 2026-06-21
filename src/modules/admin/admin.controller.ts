@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { Request } from 'express';
 import { AdminGuard } from '../auth/guards/admin.guard';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -46,5 +46,15 @@ export class AdminController {
   @Get('statistics')
   getStatistics() {
     return this.adminService.getStatistics();
+  }
+
+  @Get('units/vehicules')
+  listVehicules() {
+    return this.adminService.listVehicules();
+  }
+
+  @Get('units/vehicules/:vehiculeId')
+  getVehicule(@Param('vehiculeId') vehiculeId: string) {
+    return this.adminService.getVehiculeById(vehiculeId);
   }
 }

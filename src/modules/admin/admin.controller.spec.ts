@@ -22,6 +22,8 @@ describe('AdminController', () => {
     listStarSystems: jest.fn(),
     getStatistics: jest.fn(),
     generatePlanetPreview: jest.fn(),
+    listVehicules: jest.fn(),
+    getVehiculeById: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -158,6 +160,8 @@ describe('AdminController', () => {
       cubes: 12,
       starSystems: 8,
       planets: 24,
+      vehicules: 1,
+      buildings: 0,
     };
     mockAdminService.getStatistics.mockResolvedValue(statistics);
 
@@ -165,5 +169,58 @@ describe('AdminController', () => {
 
     expect(mockAdminService.getStatistics).toHaveBeenCalled();
     expect(result).toEqual(statistics);
+  });
+
+  it('lists vehicule unit types in the catalog', async () => {
+    const vehicules = {
+      items: [
+        {
+          id: 'scout-x1',
+          name: 'Scout-X1',
+          type: 'vehicule' as const,
+          size: 'small' as const,
+          mobility: true,
+          speed: 1,
+          environments: ['desert', 'forest'],
+          rules: [{ range: 'hexagon' as const, value: 1 }],
+          capabilities: { cargo: { size: 1000 } },
+          description: 'Can explore, extract, and build small structures.',
+          metadata: {},
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+        },
+      ],
+      total: 1,
+    };
+    mockAdminService.listVehicules.mockResolvedValue(vehicules);
+
+    const result = await controller.listVehicules();
+
+    expect(mockAdminService.listVehicules).toHaveBeenCalled();
+    expect(result).toEqual(vehicules);
+  });
+
+  it('returns a vehicule unit type by catalog id', async () => {
+    const vehicule = {
+      id: 'scout-x1',
+      name: 'Scout-X1',
+      type: 'vehicule' as const,
+      size: 'small' as const,
+      mobility: true,
+      speed: 1,
+      environments: ['desert', 'forest'],
+      rules: [{ range: 'hexagon' as const, value: 1 }],
+      capabilities: { cargo: { size: 1000 } },
+      description: 'Can explore, extract, and build small structures.',
+      metadata: {},
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      updatedAt: new Date('2026-01-01T00:00:00.000Z'),
+    };
+    mockAdminService.getVehiculeById.mockResolvedValue(vehicule);
+
+    const result = await controller.getVehicule('scout-x1');
+
+    expect(mockAdminService.getVehiculeById).toHaveBeenCalledWith('scout-x1');
+    expect(result).toEqual(vehicule);
   });
 });

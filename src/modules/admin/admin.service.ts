@@ -8,6 +8,8 @@ import { Cube } from '../galaxy/entities/cube.schema';
 import { StarSystem } from '../galaxy/entities/star-system.schema';
 import { Planet } from '../planets/entities/planet.schema';
 import { PlanetPreviewCacheService } from '../planets/planet-preview-cache.service';
+import { UnitType } from '../units/entities/unit-type.entity';
+import { UnitCatalogService } from '../units/unit-catalog.service';
 import { User } from '../auth/entities/user.entity';
 import { AdminGeneratedPlanetPreview } from '../../shared/interfaces/planet-preview.interface';
 import { generatePlanetSurface } from '../../shared/utils/planet-surface-generation';
@@ -73,6 +75,30 @@ export interface AdminStatistics {
   cubes: number;
   starSystems: number;
   planets: number;
+  vehicules: number;
+  buildings: number;
+}
+
+export type AdminUnitTypeSummary = Pick<
+  UnitType,
+  | 'id'
+  | 'name'
+  | 'type'
+  | 'size'
+  | 'mobility'
+  | 'speed'
+  | 'environments'
+  | 'rules'
+  | 'capabilities'
+  | 'description'
+  | 'metadata'
+  | 'createdAt'
+  | 'updatedAt'
+>;
+
+export interface AdminUnitTypeList {
+  items: AdminUnitTypeSummary[];
+  total: number;
 }
 
 export type { AdminGeneratedPlanetPreview } from '../../shared/interfaces/planet-preview.interface';
@@ -89,6 +115,7 @@ export class AdminService {
     @InjectModel(Planet.name)
     private planetModel: Model<Planet>,
     private readonly planetPreviewCacheService: PlanetPreviewCacheService,
+    private readonly unitCatalogService: UnitCatalogService,
   ) {}
 
   async getUserById(userId: string): Promise<AdminUserSummary> {
@@ -187,7 +214,22 @@ export class AdminService {
       this.starSystemModel.countDocuments(),
       this.planetModel.countDocuments(),
     ]);
+    const { vehicules, buildings } = this.unitCatalogService.getCatalogCounts();
 
-    return { users, cubes, starSystems, planets };
+    return { users, cubes, starSystems, planets, vehicules, buildings };
+  }
+
+  async listVehicules(): Promise<AdminUnitTypeList> {
+    const items = await this.unitCatalogService.listVehicules();
+    return { items, total: items.length };
+  }
+
+  async getVehiculeById(vehiculeId: string): Promise<AdminUnitTypeSummary> {
+    const vehicule = await this.unitCatalogService.getVehiculeById(vehiculeId);
+    if (!vehicule) {
+      throw new NotFoundException('Vehicule not found');
+    }
+
+    return vehicule;
   }
 }

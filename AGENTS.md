@@ -198,6 +198,8 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/admin/planets/generate` | GET | JWT + admin | Generate ephemeral preview planet surface (`?seed=&radius=&type=`) |
 | `/infinity/admin/systems` | GET | JWT + admin | List star systems (paginated: `?page=&count=`) |
 | `/infinity/admin/statistics` | GET | JWT + admin |
+| `/infinity/admin/units/vehicules` | GET | JWT + admin | List vehicule unit types in catalog |
+| `/infinity/admin/units/vehicules/:vehiculeId` | GET | JWT + admin | Get vehicule unit type by catalog id |
 | `/infinity/players/me/enter-game` | POST | JWT |
 | `/infinity/players/:userId` | GET | public |
 | `/infinity/players/:userId` | GET | public |

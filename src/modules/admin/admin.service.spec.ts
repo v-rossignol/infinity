@@ -5,6 +5,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { getPlanetHexCount } from '../../shared/utils/planet-surface-generation';
 import { AdminService } from './admin.service';
 import { PlanetPreviewCacheService } from '../planets/planet-preview-cache.service';
+import { UnitCatalogService } from '../units/unit-catalog.service';
 import { User } from '../auth/entities/user.entity';
 import { Cube } from '../galaxy/entities/cube.schema';
 import { StarSystem } from '../galaxy/entities/star-system.schema';
@@ -39,6 +40,12 @@ describe('AdminService', () => {
     save: jest.fn(),
   };
 
+  const unitCatalogService = {
+    listVehicules: jest.fn(),
+    getVehiculeById: jest.fn(),
+    getCatalogCounts: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -64,6 +71,10 @@ describe('AdminService', () => {
         {
           provide: PlanetPreviewCacheService,
           useValue: planetPreviewCacheService,
+        },
+        {
+          provide: UnitCatalogService,
+          useValue: unitCatalogService,
         },
       ],
     }).compile();
@@ -347,12 +358,70 @@ describe('AdminService', () => {
     cubeModel.countDocuments.mockResolvedValue(12);
     starSystemModel.countDocuments.mockResolvedValue(8);
     planetModel.countDocuments.mockResolvedValue(24);
+    unitCatalogService.getCatalogCounts.mockReturnValue({ vehicules: 1, buildings: 0 });
 
     await expect(service.getStatistics()).resolves.toEqual({
       users: 3,
       cubes: 12,
       starSystems: 8,
       planets: 24,
+      vehicules: 1,
+      buildings: 0,
     });
+  });
+
+  it('lists vehicule unit types from the catalog', async () => {
+    const vehicules = [
+      {
+        id: 'scout-x1',
+        name: 'Scout-X1',
+        type: 'vehicule' as const,
+        size: 'small' as const,
+        mobility: true,
+        speed: 1,
+        environments: ['desert', 'forest'],
+        rules: [{ range: 'hexagon' as const, value: 1 }],
+        capabilities: { cargo: { size: 1000 } },
+        description: 'Can explore, extract, and build small structures.',
+        metadata: {},
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ];
+    unitCatalogService.listVehicules.mockResolvedValue(vehicules);
+
+    await expect(service.listVehicules()).resolves.toEqual({
+      items: vehicules,
+      total: 1,
+    });
+    expect(unitCatalogService.listVehicules).toHaveBeenCalled();
+  });
+
+  it('returns a vehicule unit type by catalog id', async () => {
+    const vehicule = {
+      id: 'scout-x1',
+      name: 'Scout-X1',
+      type: 'vehicule' as const,
+      size: 'small' as const,
+      mobility: true,
+      speed: 1,
+      environments: ['desert', 'forest'],
+      rules: [{ range: 'hexagon' as const, value: 1 }],
+      capabilities: { cargo: { size: 1000 } },
+      description: 'Can explore, extract, and build small structures.',
+      metadata: {},
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    unitCatalogService.getVehiculeById.mockResolvedValue(vehicule);
+
+    await expect(service.getVehiculeById('scout-x1')).resolves.toEqual(vehicule);
+    expect(unitCatalogService.getVehiculeById).toHaveBeenCalledWith('scout-x1');
+  });
+
+  it('throws when the vehicule does not exist', async () => {
+    unitCatalogService.getVehiculeById.mockResolvedValue(null);
+
+    await expect(service.getVehiculeById('missing-id')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
