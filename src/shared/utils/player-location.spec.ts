@@ -6,7 +6,10 @@ import {
 import {
   assertValidLocation,
   buildPlanetLocation,
+  buildUnitPlanetLocation,
   getLocationDepth,
+  hasPlanetHex,
+  InvalidLocationError,
   InvalidPlayerLocationError,
   isFreshy,
 } from './player-location';
@@ -21,6 +24,14 @@ const onPlanet: PlayerLocationOnPlanet = {
   planet: {
     id: PLANET_ID,
     hex_coords: { q: 4, r: 7 },
+  },
+};
+
+const onPlanetOverview: PlayerLocationOnPlanet = {
+  cube: { id: CUBE_ID },
+  starSystem: { id: STAR_SYSTEM_ID },
+  planet: {
+    id: PLANET_ID,
   },
 };
 
@@ -51,29 +62,42 @@ describe('player-location', () => {
     });
   });
 
+  describe('hasPlanetHex', () => {
+    it('returns true when hex_coords are present', () => {
+      expect(hasPlanetHex(onPlanet)).toBe(true);
+    });
+
+    it('returns false for planet overview without hex', () => {
+      expect(hasPlanetHex(onPlanetOverview)).toBe(false);
+    });
+  });
+
   describe('getLocationDepth', () => {
     it('returns planet, starSystem, or cube for valid shapes', () => {
       expect(getLocationDepth(onPlanet)).toBe('planet');
+      expect(getLocationDepth(onPlanetOverview)).toBe('planet');
       expect(getLocationDepth(inStarSystem)).toBe('starSystem');
       expect(getLocationDepth(inCube)).toBe('cube');
     });
   });
 
-  describe('assertValidLocation', () => {
+  describe('assertValidLocation — player profile', () => {
     it('accepts example payloads from the WIP spec', () => {
       expect(() => assertValidLocation(onPlanet)).not.toThrow();
+      expect(() => assertValidLocation(onPlanetOverview)).not.toThrow();
       expect(() => assertValidLocation(inStarSystem)).not.toThrow();
       expect(() => assertValidLocation(inCube)).not.toThrow();
     });
 
     it('rejects null and non-objects', () => {
+      expect(() => assertValidLocation(null)).toThrow(InvalidLocationError);
+      expect(() => assertValidLocation('bad')).toThrow(InvalidLocationError);
       expect(() => assertValidLocation(null)).toThrow(InvalidPlayerLocationError);
-      expect(() => assertValidLocation('bad')).toThrow(InvalidPlayerLocationError);
     });
 
     it('rejects empty or partial objects', () => {
-      expect(() => assertValidLocation({})).toThrow(InvalidPlayerLocationError);
-      expect(() => assertValidLocation({ cube: {} })).toThrow(InvalidPlayerLocationError);
+      expect(() => assertValidLocation({})).toThrow(InvalidLocationError);
+      expect(() => assertValidLocation({ cube: {} })).toThrow(InvalidLocationError);
     });
 
     it('rejects cube.position at planet depth', () => {
@@ -152,10 +176,54 @@ describe('player-location', () => {
         }),
       ).toThrow(/planet\.hex_coords\.q/);
     });
+
+    it('rejects planet.position for player profile', () => {
+      expect(() =>
+        assertValidLocation(
+          {
+            ...onPlanet,
+            planet: {
+              id: PLANET_ID,
+              hex_coords: { q: 1, r: 2 },
+              position: { x: 0.5, y: 0.5 },
+            },
+          },
+          { subject: 'player' },
+        ),
+      ).toThrow(/planet\.position is not allowed for player profile/);
+    });
+  });
+
+  describe('assertValidLocation — unit profile', () => {
+    const unitOnPlanet: PlayerLocationOnPlanet = {
+      cube: { id: CUBE_ID },
+      starSystem: { id: STAR_SYSTEM_ID },
+      planet: {
+        id: PLANET_ID,
+        hex_coords: { q: 12, r: 7 },
+        position: { x: 0.35, y: 0.72 },
+      },
+    };
+
+    it('accepts planet + hex + in-hex position', () => {
+      expect(() => assertValidLocation(unitOnPlanet, { subject: 'unit' })).not.toThrow();
+    });
+
+    it('rejects planet overview without hex', () => {
+      expect(() => assertValidLocation(onPlanetOverview, { subject: 'unit' })).toThrow(
+        /planet\.hex_coords is required for unit profile/,
+      );
+    });
+
+    it('rejects planet + hex without position', () => {
+      expect(() => assertValidLocation(onPlanet, { subject: 'unit' })).toThrow(
+        /planet\.position is required for unit profile/,
+      );
+    });
   });
 
   describe('buildPlanetLocation', () => {
-    it('builds a valid planet-depth location', () => {
+    it('builds a valid planet-depth location with hex', () => {
       const location = buildPlanetLocation({
         cubeId: CUBE_ID,
         starSystemId: STAR_SYSTEM_ID,
@@ -171,6 +239,21 @@ describe('player-location', () => {
       expect(getLocationDepth(location)).toBe('planet');
     });
 
+    it('builds a valid planet overview without hex', () => {
+      const location = buildPlanetLocation({
+        cubeId: CUBE_ID,
+        starSystemId: STAR_SYSTEM_ID,
+        planetId: PLANET_ID,
+      });
+
+      expect(location).toEqual({
+        cube: { id: CUBE_ID },
+        starSystem: { id: STAR_SYSTEM_ID },
+        planet: { id: PLANET_ID },
+      });
+      expect(hasPlanetHex(location)).toBe(false);
+    });
+
     it('throws when hex coordinates are invalid', () => {
       expect(() =>
         buildPlanetLocation({
@@ -179,7 +262,26 @@ describe('player-location', () => {
           planetId: PLANET_ID,
           hex_coords: { q: 1.5, r: 0 },
         }),
-      ).toThrow(InvalidPlayerLocationError);
+      ).toThrow(InvalidLocationError);
+    });
+  });
+
+  describe('buildUnitPlanetLocation', () => {
+    it('builds a valid unit planet-depth location', () => {
+      const location = buildUnitPlanetLocation({
+        cubeId: CUBE_ID,
+        starSystemId: STAR_SYSTEM_ID,
+        planetId: PLANET_ID,
+        hex_coords: { q: 12, r: 7 },
+        position: { x: 0.35, y: 0.72 },
+      });
+
+      expect(location.planet).toEqual({
+        id: PLANET_ID,
+        hex_coords: { q: 12, r: 7 },
+        position: { x: 0.35, y: 0.72 },
+      });
+      expect(() => assertValidLocation(location, { subject: 'unit' })).not.toThrow();
     });
   });
 });

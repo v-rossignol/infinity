@@ -15,6 +15,7 @@ import {
   EnterStarSystemDto,
   LeavePlanetDto,
   LeaveStarSystemDto,
+  UpdatePlanetHexDto,
 } from './dto/location-transition.dto';
 import { Vec2LocalDto, Vec3LocalDto } from './dto/local-position.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
@@ -60,12 +61,13 @@ export class PlayerLocationController {
   @HttpCode(200)
   async enterPlanet(@Req() req: AuthenticatedRequest, @Body() dto: EnterPlanetDto) {
     const player = await this.resolvePlayer(req.user.id);
+    const hex_coords = dto.q != null && dto.r != null ? { q: dto.q, r: dto.r } : undefined;
     const updated = await this.playerLocationService.transitionTo(
       player.id,
       {
         type: 'enterPlanet',
         planetId: dto.planetId,
-        hex_coords: { q: dto.q, r: dto.r },
+        hex_coords,
       },
       { adminBypass: req.user.role === 'admin' },
     );
@@ -111,6 +113,16 @@ export class PlayerLocationController {
     const updated = await this.playerLocationService.updateStarSystemPosition(player.id, {
       x: dto.x,
       y: dto.y,
+    });
+    return { player: updated };
+  }
+
+  @Patch('planet')
+  async updatePlanetHex(@Req() req: AuthenticatedRequest, @Body() dto: UpdatePlanetHexDto) {
+    const player = await this.resolvePlayer(req.user.id);
+    const updated = await this.playerLocationService.updatePlanetHex(player.id, {
+      q: dto.q,
+      r: dto.r,
     });
     return { player: updated };
   }

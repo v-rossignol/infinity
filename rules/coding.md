@@ -1,9 +1,9 @@
 # Infinity Server Coding Rules
 
 ```yaml
-date: 2026-06-10  
-author: Roro LeSage  
-model: GPT-5.5  
+date: 2026-06-21
+author: Roro LeSage
+model: GPT-5.5
 sources:
 - "user input"
 ```
@@ -25,11 +25,24 @@ This document defines coding rules for the **Infinity Server** codebase. The rep
 
 ### 1.2 Formatting and Linting
 
-- Use **Prettier** for formatting.
+- Use **Prettier** for formatting (`printWidth: 100`, `.prettierrc`).
 - Use **ESLint** with the repository configuration in `.eslintrc.js`.
 - Follow **EditorConfig** defaults in `.editorconfig` (LF line endings, UTF-8, 2-space indentation). Editors that support EditorConfig apply these settings on new and saved files.
 - Do not introduce style rules from external guides unless they are added to the local ESLint configuration.
 - Run `npm run lint` and `npm run format` before committing when practical.
+- **Union types (`type` aliases):** let Prettier decide line breaks. Do not put every member on its own line with a leading `|` when the union fits on one line or can start on the same line as `=`. Prettier packs members until `printWidth`, then wraps the remainder with a leading `|` on the next line.
+
+  ```typescript
+  // Preferred (Prettier output)
+  export type Location = PlayerLocationInCube | PlayerLocationInStarSystem
+    | PlayerLocationOnPlanet;
+
+  // Avoid (manual one-member-per-line when Prettier would collapse)
+  export type Location =
+    | PlayerLocationInCube
+    | PlayerLocationInStarSystem
+    | PlayerLocationOnPlanet;
+  ```
 
 ### 1.3 TypeScript Strictness
 

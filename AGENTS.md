@@ -203,6 +203,7 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/players/:userId` | GET | public |
 | `/infinity/players/me/location` | PATCH | JWT |
 | `/infinity/players/me/location/*` | POST/PATCH | JWT (transitions + depth moves) |
+| `/infinity/players/me/location/planet` | PATCH | JWT | Select or update hex at planet depth |
 | `/infinity/players/me/can-enter/cube/:cubeId` | GET | JWT |
 | `/infinity/players/me/can-enter/system/:starSystemId` | GET | JWT |
 | `/infinity/players/me/can-enter/planet/:planetId` | GET | JWT |

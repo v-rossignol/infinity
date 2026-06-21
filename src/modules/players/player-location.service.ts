@@ -21,7 +21,7 @@ import {
   buildCubeLocation,
   buildPlanetLocation,
   buildStarSystemLocation,
-  InvalidPlayerLocationError,
+  InvalidLocationError,
   isPlayerLocationInCube,
   isPlayerLocationInStarSystem,
   isPlayerLocationOnPlanet,
@@ -323,7 +323,7 @@ export class PlayerLocationService {
 
   private async saveLocation(player: Player, location: PlayerLocation): Promise<Player> {
     try {
-      assertValidLocation(location);
+      assertValidLocation(location, { subject: 'player' });
     } catch (error) {
       this.rethrowLocationError(error);
     }
@@ -341,7 +341,7 @@ export class PlayerLocationService {
   }
 
   private rethrowLocationError(error: unknown): never {
-    if (error instanceof InvalidPlayerLocationError) {
+    if (error instanceof InvalidLocationError) {
       throw new BadRequestException(error.message);
     }
     throw error;

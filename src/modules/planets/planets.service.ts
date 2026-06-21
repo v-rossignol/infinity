@@ -14,7 +14,11 @@ import {
   PlanetMovePayload,
 } from '../../shared/interfaces/planet-position.interface';
 import { PlanetType } from '../../shared/interfaces/planet.interface';
-import { buildPlanetLocation, isPlayerLocationOnPlanet } from '../../shared/utils/player-location';
+import {
+  buildPlanetLocation,
+  hasPlanetHex,
+  isPlayerLocationOnPlanet,
+} from '../../shared/utils/player-location';
 import {
   generatePlanetSurface,
   getPlanetGridHeight,
@@ -58,11 +62,15 @@ export class PlanetsService {
         throw new ConflictException('Player is on a different planet');
       }
 
-      return {
-        planetId,
-        q: location.planet.hex_coords.q,
-        r: location.planet.hex_coords.r,
-      };
+      if (hasPlanetHex(location)) {
+        return {
+          planetId,
+          q: location.planet.hex_coords.q,
+          r: location.planet.hex_coords.r,
+        };
+      }
+
+      return { planetId };
     }
 
     const star = await this.starService.findById(planet.starSystemId);
@@ -70,18 +78,16 @@ export class PlanetsService {
       throw new NotFoundException(`Star "${planet.starSystemId}" not found for planet join`);
     }
 
-    const position = this.rollRandomPosition(planet.radius);
     await this.playerLocationService.setLocation(
       playerId,
       buildPlanetLocation({
         cubeId: star.cube_id,
         starSystemId: planet.starSystemId,
         planetId,
-        hex_coords: position,
       }),
     );
 
-    return { planetId, ...position };
+    return { planetId };
   }
 
   async handlePlayerMove(playerId: string, payload: PlanetMovePayload) {

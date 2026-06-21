@@ -36,6 +36,7 @@ describe('PlayerLocationController', () => {
     transitionTo: jest.fn(),
     updateCubePosition: jest.fn(),
     updateStarSystemPosition: jest.fn(),
+    updatePlanetHex: jest.fn(),
     setLocation: jest.fn(),
   };
 
@@ -196,6 +197,33 @@ describe('PlayerLocationController', () => {
     expect(result).toEqual({ player: updated });
   });
 
+  it('enterPlanet without hex transitions to planet overview', async () => {
+    const updated = {
+      ...player,
+      location: buildPlanetLocation({
+        cubeId,
+        starSystemId,
+        planetId,
+      }),
+    };
+    mockPlayerLocationService.transitionTo.mockResolvedValue(updated);
+
+    const result = await controller.enterPlanet(authReq as never, {
+      planetId,
+    });
+
+    expect(mockPlayerLocationService.transitionTo).toHaveBeenCalledWith(
+      playerId,
+      {
+        type: 'enterPlanet',
+        planetId,
+        hex_coords: undefined,
+      },
+      { adminBypass: false },
+    );
+    expect(result).toEqual({ player: updated });
+  });
+
   it('enterPlanet enables admin bypass for admin users', async () => {
     const updated = { ...player };
     mockPlayerLocationService.transitionTo.mockResolvedValue(updated);
@@ -254,6 +282,27 @@ describe('PlayerLocationController', () => {
     expect(mockPlayerLocationService.updateStarSystemPosition).toHaveBeenCalledWith(playerId, {
       x: 7,
       y: 8,
+    });
+    expect(result).toEqual({ player: updated });
+  });
+
+  it('updatePlanetHex patches hex coordinates at planet depth', async () => {
+    const updated = {
+      ...player,
+      location: buildPlanetLocation({
+        cubeId,
+        starSystemId,
+        planetId,
+        hex_coords: { q: 9, r: 8 },
+      }),
+    };
+    mockPlayerLocationService.updatePlanetHex.mockResolvedValue(updated);
+
+    const result = await controller.updatePlanetHex(authReq as never, { q: 9, r: 8 });
+
+    expect(mockPlayerLocationService.updatePlanetHex).toHaveBeenCalledWith(playerId, {
+      q: 9,
+      r: 8,
     });
     expect(result).toEqual({ player: updated });
   });

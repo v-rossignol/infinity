@@ -7,10 +7,7 @@ import {
 import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { buildPlanetLocation } from '../../shared/utils/player-location';
-import {
-  getPlanetGridHeight,
-  getPlanetHexCount,
-} from '../../shared/utils/planet-surface-generation';
+import { getPlanetHexCount } from '../../shared/utils/planet-surface-generation';
 import { StarService } from '../galaxy/star.service';
 import { StarSystemService } from '../galaxy/star-system.service';
 import { PlayerLocationService } from '../players/player-location.service';
@@ -200,7 +197,25 @@ describe('PlanetsService', () => {
       expect(mockPlayerLocationService.setLocation).not.toHaveBeenCalled();
     });
 
-    it('assigns random spawn and persists location when player is not on the planet', async () => {
+    it('returns planetId only when already on the same planet without hex', async () => {
+      mockPlayerLocationService.getLocation.mockResolvedValue(
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId,
+        }),
+      );
+      findById.mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ _id: planetId, starSystemId, radius: 5 }),
+      });
+
+      const position = await service.joinPlanet(playerId, planetId);
+
+      expect(position).toEqual({ planetId });
+      expect(mockPlayerLocationService.setLocation).not.toHaveBeenCalled();
+    });
+
+    it('sets planet overview when player is not on the planet', async () => {
       mockPlayerLocationService.getLocation.mockResolvedValue(null);
       findById.mockReturnValue({
         exec: jest.fn().mockResolvedValue({ _id: planetId, starSystemId, radius: 5 }),
@@ -210,18 +225,13 @@ describe('PlanetsService', () => {
 
       const position = await service.joinPlanet(playerId, planetId);
 
-      expect(position.planetId).toBe(planetId);
-      expect(position.q).toBeGreaterThanOrEqual(0);
-      expect(position.q).toBeLessThan(5);
-      expect(position.r).toBeGreaterThanOrEqual(0);
-      expect(position.r).toBeLessThan(getPlanetGridHeight(5));
+      expect(position).toEqual({ planetId });
       expect(mockPlayerLocationService.setLocation).toHaveBeenCalledWith(
         playerId,
         buildPlanetLocation({
           cubeId,
           starSystemId,
           planetId,
-          hex_coords: { q: position.q, r: position.r },
         }),
       );
     });
@@ -255,6 +265,28 @@ describe('PlanetsService', () => {
   });
 
   describe('handlePlayerMove', () => {
+    it('selects hex from planet overview via handlePlayerMove', async () => {
+      mockPlayerLocationService.getLocation.mockResolvedValue(
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId,
+        }),
+      );
+
+      const result = await service.handlePlayerMove(playerId, {
+        planetId,
+        q: 4,
+        r: 1,
+      });
+
+      expect(result).toEqual({ planetId, q: 4, r: 1 });
+      expect(mockPlayerLocationService.updatePlanetHex).toHaveBeenCalledWith(playerId, {
+        q: 4,
+        r: 1,
+      });
+    });
+
     it('persists hex position to PostgreSQL', async () => {
       mockPlayerLocationService.getLocation.mockResolvedValue(
         buildPlanetLocation({

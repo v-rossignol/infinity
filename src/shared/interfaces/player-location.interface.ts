@@ -30,9 +30,13 @@ export interface StarSystemLocation extends StarSystemIdentity {
   position: Vec2Local;
 }
 
-export interface PlanetLocation {
+export interface PlanetIdentity {
   id: string;
-  hex_coords: HexCoords;
+}
+
+export interface PlanetLocation extends PlanetIdentity {
+  hex_coords?: HexCoords;
+  position?: Vec2Local;
 }
 
 /** Player at Terra View — planet depth. */
@@ -53,10 +57,16 @@ export interface PlayerLocationInCube {
   cube: CubeLocation;
 }
 
-export type PlayerLocation =
-  | PlayerLocationInCube
-  | PlayerLocationInStarSystem
-  | PlayerLocationOnPlanet;
+export type Location = PlayerLocationInCube | PlayerLocationInStarSystem | PlayerLocationOnPlanet;
+
+/** @deprecated Use Location — kept as alias for player presence. */
+export type PlayerLocation = Location;
+
+export type LocationSubject = 'player' | 'unit';
+
+export interface LocationValidationOptions {
+  subject: LocationSubject;
+}
 
 export type PlayerLocationDepth = 'cube' | 'starSystem' | 'planet';
 
@@ -73,7 +83,7 @@ export interface EnterStarSystemTransition {
 export interface EnterPlanetTransition {
   type: 'enterPlanet';
   planetId: string;
-  hex_coords: HexCoords;
+  hex_coords?: HexCoords;
 }
 
 export interface LeavePlanetTransition {

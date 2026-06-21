@@ -290,6 +290,46 @@ describe('PlayerLocationService', () => {
       }
     });
 
+    it('enterPlanet without hex moves to planet overview', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(starSystemDepth));
+
+      const result = await service.transitionTo(playerId, {
+        type: 'enterPlanet',
+        planetId,
+      });
+
+      expect(result.location).toEqual(
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId,
+        }),
+      );
+    });
+
+    it('updatePlanetHex selects hex from planet overview', async () => {
+      repository.findOneBy.mockResolvedValue(
+        savePlayer(
+          buildPlanetLocation({
+            cubeId,
+            starSystemId,
+            planetId,
+          }),
+        ),
+      );
+
+      const result = await service.updatePlanetHex(playerId, { q: 5, r: 6 });
+
+      expect(result.location).toEqual(
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId,
+          hex_coords: { q: 5, r: 6 },
+        }),
+      );
+    });
+
     it('leavePlanet moves from planet to star system depth', async () => {
       repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
 
@@ -406,6 +446,35 @@ describe('PlayerLocationService', () => {
           starSystemId,
           planetId,
           hex_coords: { q: 2, r: 3 },
+        }),
+      );
+    });
+
+    it('admin enterPlanet without hex relocates to planet overview', async () => {
+      repository.findOneBy.mockResolvedValue(savePlayer(cubeDepth));
+      starService.findById.mockResolvedValue({
+        id: starSystemId,
+        cube_id: cubeId,
+      });
+      starSystemService.getStarSystem.mockResolvedValue({
+        planets: [{ id: planetId, type: 'rocky', radius: 7 }],
+      });
+      planetsService.getPlanet.mockResolvedValue({ _id: planetId, radius: 7 });
+
+      const result = await service.transitionTo(
+        playerId,
+        {
+          type: 'enterPlanet',
+          planetId,
+        },
+        { adminBypass: true },
+      );
+
+      expect(result.location).toEqual(
+        buildPlanetLocation({
+          cubeId,
+          starSystemId,
+          planetId,
         }),
       );
     });
