@@ -9,7 +9,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { buildPlanetLocation } from '../../shared/utils/player-location';
 import { getPlanetHexCount } from '../../shared/utils/planet-surface-generation';
 import { StarService } from '../galaxy/star.service';
-import { StarSystemService } from '../galaxy/star-system.service';
+import { StarSystemService } from '../systems/star-system.service';
 import { PlayerLocationService } from '../players/player-location.service';
 import { Planet } from './entities/planet.schema';
 import { PlanetsService } from './planets.service';

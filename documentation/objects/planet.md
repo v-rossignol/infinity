@@ -161,7 +161,7 @@ erDiagram
 
 ## Lifecycle
 
-1. Player enters a star → `GET /infinity/galaxy/systems/:systemId` loads `StarSystem.planets[]`.
+1. Player enters a star → `GET /infinity/systems/:systemId` loads `StarSystem.planets[]`.
 2. Player selects a **landable** planet → `GET /infinity/planets/:planetId?systemId={starId}`.
 3. If **`type` is `gas`** → **422**; no `Planet` document.
 4. If landable and no document exists → copy inherited fields; generate `surface`; save.
@@ -208,7 +208,7 @@ Copied from the matching `StarSystem.planets[]` entry — **not** re-rolled:
 
 | Method | Path | Auth | Behavior |
 |--------|------|------|----------|
-| `GET` | `/infinity/galaxy/systems/:systemId` | JWT | Load star system with planet summaries (prerequisite) |
+| `GET` | `/infinity/systems/:systemId` | JWT | Load star system with planet summaries (prerequisite) |
 | `GET` | `/infinity/planets/:planetId` | Public | Get or generate `Planet`; `?systemId=` **required on first entry** |
 
 **Error responses** for planet entry:

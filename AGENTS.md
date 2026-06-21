@@ -25,7 +25,8 @@ It exposes a REST API and real-time Socket.IO events for clients to navigate a p
 |--------|-------------|----------|
 | `auth` | Register/login, JWT strategy, `User` entity | PostgreSQL |
 | `players` | Player profiles and positions | PostgreSQL |
-| `galaxy` | Star-system generation and retrieval | MongoDB |
+| `galaxy` | Cube and star generation and retrieval | MongoDB |
+| `systems` | Star-system generation and retrieval | MongoDB |
 | `planets` | Planet generation and retrieval | MongoDB |
 | `resources` | Planet resource data | MongoDB |
 | `redis` | Redis client wrapper, cube cache | Redis |
@@ -214,7 +215,7 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/cubes/by-name/:name` | GET | JWT |
 | `/infinity/stars/:id` | GET | JWT |
 | `/infinity/stars?cube_id={uuid}` | GET | JWT |
-| `/infinity/galaxy/systems/:systemId` | GET | JWT |
+| `/infinity/systems/:systemId` | GET | JWT |
 | `/infinity/planets/:planetId` | GET | public |
 | `/infinity/resources/planet/:planetId/hex/:q/:r` | GET | public |
 | `/infinity/resources/planet/:planetId` | GET | public |

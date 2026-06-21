@@ -5,10 +5,10 @@ date: 2026-06-10
 author: Roro LeSage
 model: Composer
 sources:
-  - src/modules/galaxy/entities/star-system.schema.ts
+  - src/modules/systems/entities/star-system.schema.ts
   - src/shared/interfaces/star-system.interface.ts
-  - src/modules/galaxy/star-system.service.ts
-  - src/modules/galaxy/galaxy.controller.ts
+  - src/modules/systems/star-system.service.ts
+  - src/modules/systems/systems.controller.ts
   - src/shared/utils/procedural-generation.ts
   - src/shared/utils/planet-naming.ts
   - documentation/stellar-system/stellar-system-summary.md
@@ -20,7 +20,7 @@ sources:
 
 A **star system** (MongoDB class **`StarSystem`**) is the **on-demand inner view** of a parent [star](./star.md): embedded planet summaries and local 2D layout. It is **not** part of the cube payload and is **not** stored on the cube.
 
-Star systems are created when a player **enters** a star (`GET /infinity/galaxy/systems/:systemId`). The parent **star stays in the cube**; the system is a separate document keyed by the same UUID.
+Star systems are created when a player **enters** a star (`GET /infinity/systems/:systemId`). The parent **star stays in the cube**; the system is a separate document keyed by the same UUID.
 
 ---
 
@@ -144,7 +144,7 @@ erDiagram
 
 1. A cube is explored → lightweight [stars](./star.md) are persisted in `stars`.
 2. Map view uses **cube + stars** only; no `StarSystem` yet.
-3. Player enters a star → `GET /infinity/galaxy/systems/:systemId` (value = star UUID).
+3. Player enters a star → `GET /infinity/systems/:systemId` (value = star UUID).
 4. `StarSystemService` verifies the **Star** exists (**404** if not).
 5. If a **StarSystem** exists → return it. If not → generate, save, return.
 6. Cube star unchanged; system holds **planets** and local layout.
@@ -182,7 +182,7 @@ Planet count is **seed-stable** (same star UUID → same count). Types, radius, 
 
 | Method | Path | Auth | Behavior |
 |--------|------|------|----------|
-| `GET` | `/infinity/galaxy/systems/:systemId` | JWT | Get or generate star system (`systemId` = parent `Star.id`) |
+| `GET` | `/infinity/systems/:systemId` | JWT | Get or generate star system (`systemId` = parent `Star.id`) |
 | `GET` | `/infinity/stars/:id` | JWT | Load parent star for map view |
 | `GET` | `/infinity/planets/:planetId` | Public | Detailed planet surface; pass `?systemId={starUuid}` on first generation |
 

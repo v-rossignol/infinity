@@ -4,7 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { User } from '../auth/entities/user.entity';
 import { Cube, CubeSchema } from '../galaxy/entities/cube.schema';
-import { StarSystem, StarSystemSchema } from '../galaxy/entities/star-system.schema';
+import { StarSystem, StarSystemSchema } from '../systems/entities/star-system.schema';
 import { Planet, PlanetSchema } from '../planets/entities/planet.schema';
 import { PlanetPreviewModule } from '../planets/planet-preview.module';
 import { UnitsModule } from '../units/units.module';

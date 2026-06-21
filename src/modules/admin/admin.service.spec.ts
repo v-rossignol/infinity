@@ -8,7 +8,7 @@ import { PlanetPreviewCacheService } from '../planets/planet-preview-cache.servi
 import { UnitCatalogService } from '../units/unit-catalog.service';
 import { User } from '../auth/entities/user.entity';
 import { Cube } from '../galaxy/entities/cube.schema';
-import { StarSystem } from '../galaxy/entities/star-system.schema';
+import { StarSystem } from '../systems/entities/star-system.schema';
 import { Planet } from '../planets/entities/planet.schema';
 
 describe('AdminService', () => {

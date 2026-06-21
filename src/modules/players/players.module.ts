@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
 import { GalaxyModule } from '../galaxy/galaxy.module';
+import { SystemsModule } from '../systems/systems.module';
 import { PlanetsModule } from '../planets/planets.module';
 import { Player } from './entities/player.entity';
 import { PlayerCanEnterController } from './player-can-enter.controller';
@@ -16,6 +17,7 @@ import { PlayersController } from './players.controller';
     TypeOrmModule.forFeature([Player]),
     AuthModule,
     forwardRef(() => GalaxyModule),
+    SystemsModule,
     forwardRef(() => PlanetsModule),
   ],
   controllers: [PlayersController, PlayerLocationController, PlayerCanEnterController],

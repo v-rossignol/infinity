@@ -27,7 +27,7 @@ import {
   isPlayerLocationOnPlanet,
 } from '../../shared/utils/player-location';
 import { StarService } from '../galaxy/star.service';
-import { StarSystemService } from '../galaxy/star-system.service';
+import { StarSystemService } from '../systems/star-system.service';
 import { PlanetsService } from '../planets/planets.service';
 import { parseStarSystemIdFromPlanetId } from '../../shared/utils/planet-id';
 import { Player } from './entities/player.entity';

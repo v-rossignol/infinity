@@ -143,7 +143,7 @@ Once persisted, the same cube `origin` always returns the same stars.
 | `GET` | `/infinity/stars?cube_id={uuid}` | List stars in a cube (JWT); empty array if unknown |
 | `GET` | `/infinity/cubes/:x/:y/:z` | Returns cube + all its stars (JWT) |
 | `GET` | `/infinity/cubes/:x/:y/:z/stars` | Returns `{ stars }` only (JWT) |
-| `GET` | `/infinity/galaxy/systems/:systemId` | Enter star: get or generate [star system](./star-system.md) where `_id` = star UUID (JWT) |
+| `GET` | `/infinity/systems/:systemId` | Enter star: get or generate [star system](./star-system.md) where `_id` = star UUID (JWT) |
 
 WebSocket:
 

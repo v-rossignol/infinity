@@ -5,7 +5,7 @@ import { buildPlanetLocation, getLocationDepth } from '../../shared/utils/player
 import { NoEmptyCubeSlotError } from '../../shared/utils/spawn-cube-selection';
 import { NoRockyPlanetError } from '../../shared/utils/spawn-selection';
 import { CubeService } from '../galaxy/cube.service';
-import { StarSystemService } from '../galaxy/star-system.service';
+import { StarSystemService } from '../systems/star-system.service';
 import { PlanetsService } from '../planets/planets.service';
 import { Player } from './entities/player.entity';
 import { PlayerLocationService } from './player-location.service';

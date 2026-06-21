@@ -5,7 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Model } from 'mongoose';
 import { Repository } from 'typeorm';
 import { Cube } from '../galaxy/entities/cube.schema';
-import { StarSystem } from '../galaxy/entities/star-system.schema';
+import { StarSystem } from '../systems/entities/star-system.schema';
 import { Planet } from '../planets/entities/planet.schema';
 import { PlanetPreviewCacheService } from '../planets/planet-preview-cache.service';
 import { UnitType } from '../units/entities/unit-type.entity';

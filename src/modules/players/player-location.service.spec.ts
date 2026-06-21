@@ -14,7 +14,7 @@ import {
 import { Player } from './entities/player.entity';
 import { PlayerLocationService } from './player-location.service';
 import { StarService } from '../galaxy/star.service';
-import { StarSystemService } from '../galaxy/star-system.service';
+import { StarSystemService } from '../systems/star-system.service';
 import { PlanetsService } from '../planets/planets.service';
 
 describe('PlayerLocationService', () => {

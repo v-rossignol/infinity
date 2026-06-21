@@ -7,6 +7,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PlayersModule } from './modules/players/players.module';
 import { GalaxyModule } from './modules/galaxy/galaxy.module';
+import { SystemsModule } from './modules/systems/systems.module';
 import { PlanetsModule } from './modules/planets/planets.module';
 import { ResourcesModule } from './modules/resources/resources.module';
 import { SocketModule } from './modules/socket/socket.module';
@@ -36,6 +37,7 @@ import { RequestLoggerMiddleware } from './shared/logger';
     AdminModule,
     PlayersModule,
     GalaxyModule,
+    SystemsModule,
     PlanetsModule,
     ResourcesModule,
     UnitsModule,

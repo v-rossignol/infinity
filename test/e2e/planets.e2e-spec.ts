@@ -33,7 +33,7 @@ async function loadStarSystem(
   const starId = cubePayload.body.stars[0].id as string;
 
   const systemResponse = await request(app.getHttpServer())
-    .get(apiPath(`/galaxy/systems/${starId}`))
+    .get(apiPath(`/systems/${starId}`))
     .set('Authorization', `Bearer ${token}`)
     .expect(200);
 

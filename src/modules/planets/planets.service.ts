@@ -25,7 +25,7 @@ import {
 } from '../../shared/utils/planet-surface-generation';
 import { StarService } from '../galaxy/star.service';
 import { PlayerLocationService } from '../players/player-location.service';
-import { StarSystemService } from '../galaxy/star-system.service';
+import { StarSystemService } from '../systems/star-system.service';
 import { Planet } from './entities/planet.schema';
 
 @Injectable()
