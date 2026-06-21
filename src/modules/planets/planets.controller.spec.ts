@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
+import { UnitInstanceService } from '../units/unit-instance.service';
 import { PlanetsController } from './planets.controller';
 import { PlanetsService } from './planets.service';
 
@@ -15,6 +16,10 @@ describe('PlanetsController (integration)', () => {
 
   const mockPlanetsService = {
     getPlanet: jest.fn(),
+  };
+
+  const mockUnitInstanceService = {
+    listByPlanet: jest.fn(),
   };
 
   const landablePlanet = {
@@ -40,7 +45,10 @@ describe('PlanetsController (integration)', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PlanetsController],
-      providers: [{ provide: PlanetsService, useValue: mockPlanetsService }],
+      providers: [
+        { provide: PlanetsService, useValue: mockPlanetsService },
+        { provide: UnitInstanceService, useValue: mockUnitInstanceService },
+      ],
     }).compile();
 
     app = module.createNestApplication();
@@ -104,5 +112,17 @@ describe('PlanetsController (integration)', () => {
 
     expect(response.body._id).toBe('star-uuid_planet_0');
     expect(mockPlanetsService.getPlanet).toHaveBeenCalledWith('star-uuid_planet_0', undefined);
+  });
+
+  it('GET /infinity/planets/:planetId/units returns planet unit instances', async () => {
+    const units = [{ id: '662e8400-e29b-41d4-a716-446655440002' }];
+    mockUnitInstanceService.listByPlanet.mockResolvedValue(units);
+
+    const response = await request(app.getHttpServer())
+      .get('/infinity/planets/star-uuid_planet_0/units')
+      .expect(200);
+
+    expect(response.body).toEqual(units);
+    expect(mockUnitInstanceService.listByPlanet).toHaveBeenCalledWith('star-uuid_planet_0');
   });
 });

@@ -210,13 +210,17 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/players/me/can-enter/cube/:cubeId` | GET | JWT |
 | `/infinity/players/me/can-enter/system/:starSystemId` | GET | JWT |
 | `/infinity/players/me/can-enter/planet/:planetId` | GET | JWT |
+| `/infinity/players/me/units` | GET | JWT | List caller-owned unit instances (`UnitInstanceWithType[]`) |
+| `/infinity/units?ownerId={uuid}` | GET | JWT + admin | List unit instances for any player |
 | `/infinity/cubes/:x/:y/:z` | GET | JWT |
 | `/infinity/cubes/:x/:y/:z/stars` | GET | JWT |
 | `/infinity/cubes/by-name/:name` | GET | JWT |
 | `/infinity/stars/:id` | GET | JWT |
 | `/infinity/stars?cube_id={uuid}` | GET | JWT |
 | `/infinity/systems/:systemId` | GET | JWT |
+| `/infinity/systems/:systemId/units` | GET | JWT | List star-system-depth unit instances |
 | `/infinity/planets/:planetId` | GET | public |
+| `/infinity/planets/:planetId/units` | GET | public | List planet-surface unit instances |
 | `/infinity/resources/planet/:planetId/hex/:q/:r` | GET | public |
 | `/infinity/resources/planet/:planetId` | GET | public |
 

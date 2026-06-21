@@ -157,4 +157,18 @@ describe('UnitCatalogService', () => {
       await expect(service.getVehiculeById('missing-id')).resolves.toBeNull();
     });
   });
+
+  describe('getUnitTypeById', () => {
+    it('returns any catalog unit type by id', async () => {
+      const unitType = {
+        id: SCOUT_X1.id,
+        name: SCOUT_X1.name,
+        type: SCOUT_X1.type,
+      };
+      unitTypeRepository.findOneBy.mockResolvedValue(unitType);
+
+      await expect(service.getUnitTypeById(SCOUT_X1.id)).resolves.toEqual(unitType);
+      expect(unitTypeRepository.findOneBy).toHaveBeenCalledWith({ id: SCOUT_X1.id });
+    });
+  });
 });

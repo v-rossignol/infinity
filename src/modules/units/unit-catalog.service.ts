@@ -42,6 +42,10 @@ export class UnitCatalogService implements OnModuleInit {
     });
   }
 
+  async getUnitTypeById(typeId: string): Promise<UnitType | null> {
+    return this.unitTypeRepository.findOneBy({ id: typeId });
+  }
+
   getCatalogCounts(): UnitCatalogCounts {
     return {
       vehicules: this.countCatalogByType('vehicule'),

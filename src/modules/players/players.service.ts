@@ -16,6 +16,10 @@ export class PlayersService {
     return this.playersRepository.findOneBy({ userId });
   }
 
+  async findById(playerId: string) {
+    return this.playersRepository.findOneBy({ id: playerId });
+  }
+
   async createForUser(userId: string) {
     const player = this.playersRepository.create({ userId, location: null });
     return this.playersRepository.save(player);

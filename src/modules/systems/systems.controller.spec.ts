@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UnitInstanceService } from '../units/unit-instance.service';
 import { StarSystemService } from './star-system.service';
 import { SystemsController } from './systems.controller';
 
@@ -10,12 +11,19 @@ describe('SystemsController', () => {
     getStarSystem: jest.fn(),
   };
 
+  const mockUnitInstanceService = {
+    listByStarSystem: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [SystemsController],
-      providers: [{ provide: StarSystemService, useValue: mockStarSystemService }],
+      providers: [
+        { provide: StarSystemService, useValue: mockStarSystemService },
+        { provide: UnitInstanceService, useValue: mockUnitInstanceService },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({ canActivate: () => true })
@@ -30,5 +38,13 @@ describe('SystemsController', () => {
 
     await expect(controller.getStarSystem('star-uuid')).resolves.toEqual(system);
     expect(mockStarSystemService.getStarSystem).toHaveBeenCalledWith('star-uuid');
+  });
+
+  it('lists star-system-depth unit instances', async () => {
+    const units = [{ id: '662e8400-e29b-41d4-a716-446655440002' }];
+    mockUnitInstanceService.listByStarSystem.mockResolvedValue(units);
+
+    await expect(controller.listSystemUnits('star-uuid')).resolves.toEqual(units);
+    expect(mockUnitInstanceService.listByStarSystem).toHaveBeenCalledWith('star-uuid');
   });
 });
