@@ -100,7 +100,7 @@ describeE2e('Planets (e2e)', () => {
     });
 
     it('rejects first entry without systemId', async () => {
-      const uniquePlanetId = `e2e-missing-${Date.now()}_planet_0`;
+      const uniquePlanetId = `e2e-missing-${Date.now()}-p1`;
 
       await request(app.getHttpServer())
         .get(apiPath(`/planets/${uniquePlanetId}`))
@@ -111,7 +111,7 @@ describeE2e('Planets (e2e)', () => {
       const { starId } = await loadStarSystem(app, token);
 
       await request(app.getHttpServer())
-        .get(apiPath(`/planets/${starId}_planet_missing`))
+        .get(apiPath(`/planets/${starId}-p999`))
         .query({ systemId: starId })
         .expect(404);
     });

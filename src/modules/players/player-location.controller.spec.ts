@@ -15,7 +15,7 @@ describe('PlayerLocationController', () => {
   const playerId = 'player-uuid';
   const cubeId = 'cube-uuid';
   const starSystemId = 'star-uuid';
-  const planetId = `${starSystemId}_planet_0`;
+  const planetId = `${starSystemId}-p1`;
 
   const player = {
     id: playerId,

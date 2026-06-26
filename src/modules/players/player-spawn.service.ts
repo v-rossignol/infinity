@@ -9,9 +9,16 @@ import {
   pickLargestRockyPlanet,
   pickRandomStar,
 } from '../../shared/utils/spawn-selection';
+import {
+  NoAllowedHexError,
+  pickRandomAllowedHex,
+  rollRandomInHexPosition,
+} from '../../shared/utils/unit-placement';
 import { CubeService } from '../galaxy/cube.service';
 import { StarSystemService } from '../systems/star-system.service';
 import { PlanetsService } from '../planets/planets.service';
+import { SCOUT_X1 } from '../units/constants/unit-catalog';
+import { UnitInstanceService } from '../units/unit-instance.service';
 import { Player } from './entities/player.entity';
 import { PlayerLocationService } from './player-location.service';
 
@@ -26,6 +33,7 @@ export class PlayerSpawnService {
     private readonly cubeService: CubeService,
     private readonly starSystemService: StarSystemService,
     private readonly planetsService: PlanetsService,
+    private readonly unitInstanceService: UnitInstanceService,
   ) {}
 
   async bootstrapPlayer(player: Player): Promise<EnterGameResult> {
@@ -50,7 +58,8 @@ export class PlayerSpawnService {
     return (
       error instanceof NoEmptyCubeSlotError ||
       error instanceof NoRockyPlanetError ||
-      error instanceof NoStarsInCubeError
+      error instanceof NoStarsInCubeError ||
+      error instanceof NoAllowedHexError
     );
   }
 
@@ -80,26 +89,37 @@ export class PlayerSpawnService {
       try {
         const system = await this.starSystemService.getStarSystem(star.id);
         summary = pickLargestRockyPlanet(system.planets);
+
+        const planet = await this.planetsService.getPlanet(summary.id, star.id);
+        const surfacePos = this.planetsService.rollRandomPosition(planet.radius);
+        const scoutHex = pickRandomAllowedHex(planet.surface.hexagons, SCOUT_X1.environments);
+        const scoutPosition = rollRandomInHexPosition();
+
+        const location = buildPlanetLocation({
+          cubeId: cube.id,
+          starSystemId: star.id,
+          planetId: planet._id,
+          hex_coords: surfacePos,
+        });
+
+        const updatedPlayer = await this.playerLocationService.setLocation(player.id, location);
+        await this.unitInstanceService.createPlanetUnit({
+          ownerId: updatedPlayer.id,
+          typeId: SCOUT_X1.id,
+          cubeId: cube.id,
+          starSystemId: star.id,
+          planetId: planet._id,
+          hex_coords: scoutHex,
+          position: scoutPosition,
+        });
+
+        return { player: updatedPlayer };
       } catch (error) {
-        if (error instanceof NoRockyPlanetError) {
+        if (error instanceof NoRockyPlanetError || error instanceof NoAllowedHexError) {
           continue;
         }
         throw error;
       }
-
-      const planet = await this.planetsService.getPlanet(summary.id, star.id);
-      const surfacePos = this.planetsService.rollRandomPosition(planet.radius);
-
-      const location = buildPlanetLocation({
-        cubeId: cube.id,
-        starSystemId: star.id,
-        planetId: planet._id,
-        hex_coords: surfacePos,
-      });
-
-      const updatedPlayer = await this.playerLocationService.setLocation(player.id, location);
-
-      return { player: updatedPlayer };
     }
 
     throw new NoRockyPlanetError();

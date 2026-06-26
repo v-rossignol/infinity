@@ -21,7 +21,7 @@ describe('PlayerLocationService', () => {
   const playerId = 'player-uuid';
   const cubeId = 'cube-uuid';
   const starSystemId = 'star-uuid';
-  const planetId = `${starSystemId}_planet_0`;
+  const planetId = `${starSystemId}-p1`;
 
   const cubeDepth = buildCubeLocation({
     cubeId,
@@ -173,7 +173,7 @@ describe('PlayerLocationService', () => {
     it('canEnterPlanet returns false when player is on another planet', async () => {
       repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
 
-      await expect(service.canEnterPlanet(playerId, `${starSystemId}_planet_1`)).resolves.toBe(
+      await expect(service.canEnterPlanet(playerId, `${starSystemId}-p2`)).resolves.toBe(
         false,
       );
     });

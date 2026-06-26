@@ -14,6 +14,8 @@ describe('UnitInstanceService', () => {
 
   const unitInstanceRepository = {
     find: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
   };
 
   const unitCatalogService = {
@@ -25,7 +27,7 @@ describe('UnitInstanceService', () => {
   };
 
   const ownerId = '773e8400-e29b-41d4-a716-446655440003';
-  const planetId = '661e8400-e29b-41d4-a716-446655440001_planet_0';
+  const planetId = '661e8400-e29b-41d4-a716-446655440001-p1';
   const starSystemId = '661e8400-e29b-41d4-a716-446655440001';
   const cubeId = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -141,5 +143,44 @@ describe('UnitInstanceService', () => {
 
     await expect(service.listByOwner(ownerId)).resolves.toEqual([]);
     expect(Logger.prototype.warn).toHaveBeenCalled();
+  });
+
+  it('creates a planet unit with denormalized location fields', async () => {
+    const createdInstance = { ...instance, status: 'active' as const };
+    unitInstanceRepository.create.mockReturnValue(createdInstance);
+    unitInstanceRepository.save.mockResolvedValue(createdInstance);
+
+    await expect(
+      service.createPlanetUnit({
+        ownerId,
+        typeId: SCOUT_X1.id,
+        cubeId,
+        starSystemId,
+        planetId,
+        hex_coords: { q: 12, r: 7 },
+        position: { x: 0.35, y: 0.72 },
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        id: instance.id,
+        typeId: SCOUT_X1.id,
+        ownerId,
+        location,
+        status: 'active',
+      }),
+    );
+
+    expect(unitInstanceRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        typeId: SCOUT_X1.id,
+        ownerId,
+        placeLevel: 'planet',
+        cubeId,
+        planetId,
+        starSystemId: null,
+        status: 'active',
+      }),
+    );
+    expect(unitInstanceRepository.save).toHaveBeenCalledWith(createdInstance);
   });
 });

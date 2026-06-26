@@ -16,7 +16,7 @@ describe('ResourcesService', () => {
     getById: jest.fn(),
   };
 
-  const planetId = 'star-uuid_planet_0';
+  const planetId = 'star-uuid-p1';
   const planet = {
     _id: planetId,
     surface: {

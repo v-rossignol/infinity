@@ -1,5 +1,6 @@
 import { Noise } from 'noisejs';
 import { GAME_CONSTANTS } from '../constants/game.constants';
+import { buildPlanetId } from './planet-id';
 import { getPlanetName } from './planet-naming';
 
 interface StarSystemGenerationData {
@@ -77,7 +78,7 @@ export const generateStarSystem = (
   const planets = [];
   for (let i = 0; i < planetCount; i++) {
     planets.push({
-      id: `${seed}_planet_${i}`,
+      id: buildPlanetId(seed, i),
       name: getPlanetName(starName, i + 1),
       distanceFromStar: orbitDistances[i],
       radius: rollOddPlanetRadius(),

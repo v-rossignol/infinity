@@ -21,7 +21,7 @@ describe('PlayersController', () => {
       location: buildPlanetLocation({
         cubeId: 'cube-1',
         starSystemId: 'star-1',
-        planetId: 'star-1_planet_0',
+        planetId: 'star-1-p1',
         hex_coords: { q: 2, r: 4 },
       }),
     },
@@ -87,7 +87,7 @@ describe('PlayersController', () => {
 
       expect(Object.keys(result)).toEqual(['player']);
       const location = result.player.location;
-      expect(location && 'planet' in location && location.planet.id).toBe('star-1_planet_0');
+      expect(location && 'planet' in location && location.planet.id).toBe('star-1-p1');
       expect(location && 'cube' in location && 'position' in location.cube).toBe(false);
       expect(location && 'starSystem' in location && 'position' in location.starSystem).toBe(false);
     });

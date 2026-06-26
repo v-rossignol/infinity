@@ -38,7 +38,7 @@ describe('ResourcesController (integration)', () => {
 
   it('GET /infinity/resources/planet/:planetId/hex/:q/:r returns hex resources', async () => {
     const payload = {
-      planetId: 'star-uuid_planet_0',
+      planetId: 'star-uuid-p1',
       coordinates: { q: 2, r: 1 },
       biome: 'forest',
       resources: [{ type: 'wood', abundance: 50, rarity: 'common' }],
@@ -46,21 +46,21 @@ describe('ResourcesController (integration)', () => {
     mockResourcesService.findByPlanetHex.mockResolvedValue(payload);
 
     const response = await request(app.getHttpServer())
-      .get('/infinity/resources/planet/star-uuid_planet_0/hex/2/1')
+      .get('/infinity/resources/planet/star-uuid-p1/hex/2/1')
       .expect(200);
 
     expect(response.body).toEqual(payload);
-    expect(mockResourcesService.findByPlanetHex).toHaveBeenCalledWith('star-uuid_planet_0', 2, 1);
+    expect(mockResourcesService.findByPlanetHex).toHaveBeenCalledWith('star-uuid-p1', 2, 1);
   });
 
   it('GET /infinity/resources/planet/:planetId returns planet resource nodes', async () => {
     mockResourcesService.findByPlanetId.mockResolvedValue([]);
 
     await request(app.getHttpServer())
-      .get('/infinity/resources/planet/star-uuid_planet_0')
+      .get('/infinity/resources/planet/star-uuid-p1')
       .expect(200);
 
-    expect(mockResourcesService.findByPlanetId).toHaveBeenCalledWith('star-uuid_planet_0');
+    expect(mockResourcesService.findByPlanetId).toHaveBeenCalledWith('star-uuid-p1');
   });
 
   it('GET hex route propagates not found errors', async () => {

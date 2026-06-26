@@ -16,7 +16,7 @@ import {
 
 const CUBE_ID = '550e8400-e29b-41d4-a716-446655440000';
 const STAR_SYSTEM_ID = '661e8400-e29b-41d4-a716-446655440001';
-const PLANET_ID = '661e8400-e29b-41d4-a716-446655440001_planet_0';
+const PLANET_ID = '661e8400-e29b-41d4-a716-446655440001-p1';
 
 const onPlanet: PlayerLocationOnPlanet = {
   cube: { id: CUBE_ID },

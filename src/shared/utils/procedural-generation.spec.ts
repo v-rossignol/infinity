@@ -45,6 +45,15 @@ describe('procedural-generation', () => {
     });
   });
 
+  it('assigns procedural planet ids with 1-based -p suffix', () => {
+    const seed = '550e8400-e29b-41d4-a716-446655440000';
+    const system = generateStarSystem({ seed, starName });
+
+    system.planets.forEach((planet, index) => {
+      expect(planet.id).toBe(`${seed}-p${index + 1}`);
+    });
+  });
+
   it('rollOddPlanetRadius returns only odd integers from min to max', () => {
     const { PLANET_RADIUS_MIN, PLANET_RADIUS_MAX } = GAME_CONSTANTS;
     const seen = new Set<number>();

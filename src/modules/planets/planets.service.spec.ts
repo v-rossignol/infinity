@@ -15,7 +15,7 @@ import { Planet } from './entities/planet.schema';
 import { PlanetsService } from './planets.service';
 
 describe('PlanetsService', () => {
-  const planetId = 'star-uuid_planet_0';
+  const planetId = 'star-uuid-p1';
   const starSystemId = 'star-uuid';
   const cubeId = 'cube-uuid';
   const playerId = 'player-uuid';

@@ -51,7 +51,7 @@ export class UnitInstance {
   @Column({ type: 'uuid', nullable: true, default: null })
   starSystemId: string | null;
 
-  @Column({ type: 'uuid', nullable: true, default: null })
+  @Column({ type: 'varchar', nullable: true, default: null })
   planetId: string | null;
 
   @Column({ type: 'varchar', default: 'inactive' })

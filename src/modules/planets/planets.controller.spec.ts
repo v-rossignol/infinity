@@ -23,7 +23,7 @@ describe('PlanetsController (integration)', () => {
   };
 
   const landablePlanet = {
-    _id: 'star-uuid_planet_0',
+    _id: 'star-uuid-p1',
     name: 'Planet 1',
     starSystemId: 'star-uuid',
     type: 'rocky',
@@ -65,12 +65,12 @@ describe('PlanetsController (integration)', () => {
     mockPlanetsService.getPlanet.mockResolvedValue(landablePlanet);
 
     const response = await request(app.getHttpServer())
-      .get('/infinity/planets/star-uuid_planet_0')
+      .get('/infinity/planets/star-uuid-p1')
       .query({ systemId: 'star-uuid' })
       .expect(200);
 
     expect(response.body).toEqual(landablePlanet);
-    expect(mockPlanetsService.getPlanet).toHaveBeenCalledWith('star-uuid_planet_0', 'star-uuid');
+    expect(mockPlanetsService.getPlanet).toHaveBeenCalledWith('star-uuid-p1', 'star-uuid');
   });
 
   it('GET rejects first entry without systemId with 400', async () => {
@@ -78,7 +78,7 @@ describe('PlanetsController (integration)', () => {
       new BadRequestException('systemId is required on first planet entry'),
     );
 
-    await request(app.getHttpServer()).get('/infinity/planets/star-uuid_planet_0').expect(400);
+    await request(app.getHttpServer()).get('/infinity/planets/star-uuid-p1').expect(400);
   });
 
   it('GET returns 422 for gas planets', async () => {
@@ -87,7 +87,7 @@ describe('PlanetsController (integration)', () => {
     );
 
     await request(app.getHttpServer())
-      .get('/infinity/planets/star-uuid_planet_1')
+      .get('/infinity/planets/star-uuid-p2')
       .query({ systemId: 'star-uuid' })
       .expect(422);
   });
@@ -107,11 +107,11 @@ describe('PlanetsController (integration)', () => {
     mockPlanetsService.getPlanet.mockResolvedValue(landablePlanet);
 
     const response = await request(app.getHttpServer())
-      .get('/infinity/planets/star-uuid_planet_0')
+      .get('/infinity/planets/star-uuid-p1')
       .expect(200);
 
-    expect(response.body._id).toBe('star-uuid_planet_0');
-    expect(mockPlanetsService.getPlanet).toHaveBeenCalledWith('star-uuid_planet_0', undefined);
+    expect(response.body._id).toBe('star-uuid-p1');
+    expect(mockPlanetsService.getPlanet).toHaveBeenCalledWith('star-uuid-p1', undefined);
   });
 
   it('GET /infinity/planets/:planetId/units returns planet unit instances', async () => {
@@ -119,10 +119,10 @@ describe('PlanetsController (integration)', () => {
     mockUnitInstanceService.listByPlanet.mockResolvedValue(units);
 
     const response = await request(app.getHttpServer())
-      .get('/infinity/planets/star-uuid_planet_0/units')
+      .get('/infinity/planets/star-uuid-p1/units')
       .expect(200);
 
     expect(response.body).toEqual(units);
-    expect(mockUnitInstanceService.listByPlanet).toHaveBeenCalledWith('star-uuid_planet_0');
+    expect(mockUnitInstanceService.listByPlanet).toHaveBeenCalledWith('star-uuid-p1');
   });
 });

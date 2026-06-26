@@ -10,12 +10,14 @@ import { PlanetsService } from '../planets/planets.service';
 import { Player } from './entities/player.entity';
 import { PlayerLocationService } from './player-location.service';
 import { PlayerSpawnService } from './player-spawn.service';
+import { UnitInstanceService } from '../units/unit-instance.service';
+import { SCOUT_X1 } from '../units/constants/unit-catalog';
 
 describe('PlayerSpawnService', () => {
   const playerId = 'player-uuid';
   const userId = 'user-uuid';
   const starId = 'star-uuid';
-  const planetId = `${starId}_planet_0`;
+  const planetId = `${starId}-p1`;
   const cubeId = 'cube-uuid';
 
   const basePlayer: Player = {
@@ -55,7 +57,23 @@ describe('PlayerSpawnService', () => {
     type: 'rocky',
     radius: 9,
     resources: { iron: 100 },
-    surface: { hexagons: [], generatedAt: new Date() },
+    surface: {
+      hexagons: [
+        {
+          biome: 'ocean',
+          resources: [],
+          dangerLevel: 0,
+          coordinates: { q: 0, r: 0 },
+        },
+        {
+          biome: 'forest',
+          resources: [],
+          dangerLevel: 1,
+          coordinates: { q: 2, r: 5 },
+        },
+      ],
+      generatedAt: new Date(),
+    },
   };
 
   const mockPlayerLocationService = {
@@ -76,6 +94,10 @@ describe('PlayerSpawnService', () => {
     rollRandomPosition: jest.fn(),
   };
 
+  const mockUnitInstanceService = {
+    createPlanetUnit: jest.fn(),
+  };
+
   let service: PlayerSpawnService;
 
   beforeEach(async () => {
@@ -88,6 +110,7 @@ describe('PlayerSpawnService', () => {
         { provide: CubeService, useValue: mockCubeService },
         { provide: StarSystemService, useValue: mockStarSystemService },
         { provide: PlanetsService, useValue: mockPlanetsService },
+        { provide: UnitInstanceService, useValue: mockUnitInstanceService },
       ],
     }).compile();
 
@@ -106,6 +129,7 @@ describe('PlayerSpawnService', () => {
     expect(mockCubeService.pickSpawnCubeOrigin).not.toHaveBeenCalled();
     expect(mockPlanetsService.getPlanet).not.toHaveBeenCalled();
     expect(mockPlayerLocationService.setLocation).not.toHaveBeenCalled();
+    expect(mockUnitInstanceService.createPlanetUnit).not.toHaveBeenCalled();
   });
 
   it('allocates a new spawn and persists player location last', async () => {
@@ -138,12 +162,22 @@ describe('PlayerSpawnService', () => {
       ...basePlayer,
       location: newLocation,
     });
+    mockUnitInstanceService.createPlanetUnit.mockResolvedValue({ id: 'scout-instance-id' });
 
     const result = await service.bootstrapPlayer(basePlayer);
 
     expect(mockPlanetsService.getPlanet).toHaveBeenCalledWith(planetId, starId);
     expect(mockPlanetsService.rollRandomPosition).toHaveBeenCalledWith(planet.radius);
     expect(mockPlayerLocationService.setLocation).toHaveBeenCalledWith(playerId, newLocation);
+    expect(mockUnitInstanceService.createPlanetUnit).toHaveBeenCalledWith({
+      ownerId: playerId,
+      typeId: SCOUT_X1.id,
+      cubeId,
+      starSystemId: starId,
+      planetId,
+      hex_coords: { q: 2, r: 5 },
+      position: expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }),
+    });
     expect(result).toEqual({
       player: {
         ...basePlayer,
@@ -156,7 +190,7 @@ describe('PlayerSpawnService', () => {
 
   it('retries another star when the first system has no rocky planet', async () => {
     const starB = { ...star, id: 'star-b', name: 'Beta spawn-cube' };
-    const planetBId = 'star-b_planet_0';
+    const planetBId = 'star-b-p1';
 
     mockCubeService.pickSpawnCubeOrigin.mockResolvedValue(cube.origin);
     mockCubeService.getOrCreateByOrigin.mockResolvedValue({ cube, stars: [star, starB] });
@@ -208,6 +242,7 @@ describe('PlayerSpawnService', () => {
         hex_coords: { q: 1, r: 1 },
       }),
     });
+    mockUnitInstanceService.createPlanetUnit.mockResolvedValue({ id: 'scout-instance-id' });
 
     await service.bootstrapPlayer(basePlayer);
 

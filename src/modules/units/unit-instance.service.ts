@@ -1,8 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { HexCoords, Vec2Local } from '../../shared/interfaces/player-location.interface';
 import { UnitInstanceWithType } from '../../shared/interfaces/unit-instance.interface';
 import { UnitTypeDefinition } from '../../shared/interfaces/unit-type.interface';
+import { buildUnitPlanetLocation } from '../../shared/utils/player-location';
+import { computeDenormalizedFields } from '../../shared/utils/unit-instance-location';
 import { PlayersService } from '../players/players.service';
 import { UnitInstance } from './entities/unit-instance.entity';
 import { UnitType } from './entities/unit-type.entity';
@@ -53,6 +56,42 @@ export class UnitInstanceService {
     }
 
     return this.listByOwner(ownerId);
+  }
+
+  async createPlanetUnit(params: {
+    ownerId: string;
+    typeId: string;
+    cubeId: string;
+    starSystemId: string;
+    planetId: string;
+    hex_coords: HexCoords;
+    position: Vec2Local;
+  }): Promise<UnitInstanceWithType> {
+    const unitType = await this.unitCatalogService.getUnitTypeById(params.typeId);
+    if (!unitType) {
+      throw new NotFoundException(`Unit type "${params.typeId}" not found`);
+    }
+
+    const location = buildUnitPlanetLocation({
+      cubeId: params.cubeId,
+      starSystemId: params.starSystemId,
+      planetId: params.planetId,
+      hex_coords: params.hex_coords,
+      position: params.position,
+    });
+    const denormalized = computeDenormalizedFields(location);
+
+    const instance = this.unitInstanceRepository.create({
+      typeId: params.typeId,
+      ownerId: params.ownerId,
+      location,
+      status: 'active',
+      metadata: {},
+      ...denormalized,
+    });
+
+    const saved = await this.unitInstanceRepository.save(instance);
+    return this.toUnitInstanceWithType(saved, unitType);
   }
 
   private async mapInstancesWithType(

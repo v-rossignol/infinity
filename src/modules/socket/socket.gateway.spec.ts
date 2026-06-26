@@ -202,52 +202,52 @@ describe('SocketGateway planet events', () => {
 
   it('PLANET_JOIN joins room, resolves spawn, and broadcasts PLANET_UPDATE', async () => {
     mockPlanetsService.joinPlanet.mockResolvedValue({
-      planetId: 'alpha-centauri_planet_0',
+      planetId: 'alpha-centauri-p1',
       q: 2,
       r: 3,
     });
 
-    await gateway.handlePlanetJoin(mockClient, { planetId: 'alpha-centauri_planet_0' });
+    await gateway.handlePlanetJoin(mockClient, { planetId: 'alpha-centauri-p1' });
 
-    expect(mockPlanetsService.joinPlanet).toHaveBeenCalledWith(playerId, 'alpha-centauri_planet_0');
-    expect(mockClient.join).toHaveBeenCalledWith('alpha-centauri_planet_0');
-    expect(mockServer.to).toHaveBeenCalledWith('alpha-centauri_planet_0');
+    expect(mockPlanetsService.joinPlanet).toHaveBeenCalledWith(playerId, 'alpha-centauri-p1');
+    expect(mockClient.join).toHaveBeenCalledWith('alpha-centauri-p1');
+    expect(mockServer.to).toHaveBeenCalledWith('alpha-centauri-p1');
     expect(mockServer.emit).toHaveBeenCalledWith(PLANET_EVENTS.UPDATE, {
       playerId,
-      planetId: 'alpha-centauri_planet_0',
+      planetId: 'alpha-centauri-p1',
       q: 2,
       r: 3,
     });
   });
 
   it('PLANET_LEAVE removes client from planet room', async () => {
-    await gateway.handlePlanetLeave(mockClient, { planetId: 'alpha-centauri_planet_0' });
+    await gateway.handlePlanetLeave(mockClient, { planetId: 'alpha-centauri-p1' });
 
-    expect(mockClient.leave).toHaveBeenCalledWith('alpha-centauri_planet_0');
+    expect(mockClient.leave).toHaveBeenCalledWith('alpha-centauri-p1');
   });
 
   it('PLANET_MOVE persists position and broadcasts PLANET_UPDATE with q/r', async () => {
     mockPlanetsService.handlePlayerMove.mockResolvedValue({
-      planetId: 'alpha-centauri_planet_0',
+      planetId: 'alpha-centauri-p1',
       q: 4,
       r: 1,
     });
 
     await gateway.handlePlanetMove(mockClient, {
-      planetId: 'alpha-centauri_planet_0',
+      planetId: 'alpha-centauri-p1',
       q: 4,
       r: 1,
     });
 
     expect(mockPlanetsService.handlePlayerMove).toHaveBeenCalledWith(playerId, {
-      planetId: 'alpha-centauri_planet_0',
+      planetId: 'alpha-centauri-p1',
       q: 4,
       r: 1,
     });
-    expect(mockServer.to).toHaveBeenCalledWith('alpha-centauri_planet_0');
+    expect(mockServer.to).toHaveBeenCalledWith('alpha-centauri-p1');
     expect(mockServer.emit).toHaveBeenCalledWith(PLANET_EVENTS.UPDATE, {
       playerId,
-      planetId: 'alpha-centauri_planet_0',
+      planetId: 'alpha-centauri-p1',
       q: 4,
       r: 1,
     });
