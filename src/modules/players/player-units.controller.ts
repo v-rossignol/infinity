@@ -11,6 +11,7 @@ import {
 import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MoveUnitDto } from '../units/dto/move-unit.dto';
+import { StopUnitDto } from '../units/dto/stop-unit.dto';
 import { UnitInstanceService } from '../units/unit-instance.service';
 import { UnitMovementService } from '../units/unit-movement.service';
 import { PlayersService } from './players.service';
@@ -46,5 +47,15 @@ export class PlayerUnitsController {
     }
 
     return this.unitMovementService.orderMove(player.id, unitId, dto);
+  }
+
+  @Post('units/:unitId/stop')
+  async stopUnit(@Req() req: AuthenticatedRequest, @Param('unitId') unitId: string, @Body() dto: StopUnitDto) {
+    const player = await this.playersService.findByUserId(req.user.id);
+    if (!player) {
+      throw new NotFoundException('Player not found');
+    }
+
+    return this.unitMovementService.orderStop(player.id, unitId, dto);
   }
 }

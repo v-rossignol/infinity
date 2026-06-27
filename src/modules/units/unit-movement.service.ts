@@ -14,10 +14,11 @@ import { UnitInstanceWithType } from '../../shared/interfaces/unit-instance.inte
 import { buildUnitPlanetLocation, isPlayerLocationOnPlanet } from '../../shared/utils/player-location';
 import { computeDenormalizedFields } from '../../shared/utils/unit-instance-location';
 import { hexDistance } from '../../shared/utils/hex-grid';
-import { computePlanetSurfaceTravelDistance, computePlanetSurfaceTravelMs } from '../../shared/utils/planet-surface-travel';
+import { computePlanetSurfaceTravelDistance, computePlanetSurfaceTravelMs, computeMovingUnitSurfacePointAtTime } from '../../shared/utils/planet-surface-travel';
 import { UnitInstance } from './entities/unit-instance.entity';
 import { UnitCatalogService } from './unit-catalog.service';
 import { MoveUnitDto } from './dto/move-unit.dto';
+import { StopUnitDto } from './dto/stop-unit.dto';
 
 export interface UnitMovementArrivedEvent {
   unitId: string;
@@ -53,6 +54,11 @@ export interface MoveOrderResult {
   destination: MoveSurfacePoint;
   /** Temporary debug field. Surface travel distance in hex units (1 = largest intra-hex distance). */
   distance: number;
+}
+
+export interface StopOrderResult {
+  unitId: string;
+  status: 'idle';
 }
 
 @Injectable()
@@ -152,6 +158,92 @@ export class UnitMovementService {
     };
   }
 
+  async orderStop(playerId: string, unitId: string, dto: StopUnitDto): Promise<StopOrderResult> {
+    const unit = await this.unitInstanceRepository.findOne({ where: { id: unitId } });
+    if (!unit) {
+      throw new NotFoundException(`Unit "${unitId}" not found`);
+    }
+
+    if (unit.ownerId !== playerId) {
+      throw new ForbiddenException('You do not own this unit');
+    }
+
+    if (unit.placeLevel !== 'planet' || unit.planetId !== dto.planetId) {
+      throw new UnprocessableEntityException('Unit is not on the specified planet');
+    }
+
+    if (unit.status !== 'moving') {
+      throw new ConflictException('Unit is not moving');
+    }
+
+    const movement = this.parseMovementMetadata(unit.metadata);
+    if (!movement) {
+      throw new UnprocessableEntityException('Unit has no active movement metadata');
+    }
+
+    const currentLocation = unit.location;
+    if (!isPlayerLocationOnPlanet(currentLocation) || !currentLocation.planet.hex_coords) {
+      throw new UnprocessableEntityException('Unit does not have a valid planet hex position');
+    }
+
+    const origin: MoveSurfacePoint = {
+      hex: currentLocation.planet.hex_coords,
+      position: currentLocation.planet.position ?? { x: 0.5, y: 0.5 },
+    };
+    const destination: MoveSurfacePoint = {
+      hex: movement.targetHex,
+      position: movement.targetPosition,
+    };
+    const currentSurface = computeMovingUnitSurfacePointAtTime(
+      origin,
+      destination,
+      movement.startedAt,
+      movement.arrivalAt,
+    );
+
+    await this.applyPlanetSurfacePosition(
+      unitId,
+      dto.planetId,
+      currentSurface.hex,
+      currentSurface.position,
+      `Unit "${unitId}" stopped at hex (${currentSurface.hex.q},${currentSurface.hex.r}) on planet "${dto.planetId}"`,
+    );
+
+    return { unitId, status: 'idle' };
+  }
+
+  private parseMovementMetadata(metadata: Record<string, unknown>): MovementMetadata | null {
+    const raw = metadata.movement;
+    if (raw == null || typeof raw !== 'object') {
+      return null;
+    }
+
+    const movement = raw as Record<string, unknown>;
+    const targetHex = movement.targetHex;
+    const targetPosition = movement.targetPosition;
+    if (
+      targetHex == null ||
+      typeof targetHex !== 'object' ||
+      typeof (targetHex as Record<string, unknown>).q !== 'number' ||
+      typeof (targetHex as Record<string, unknown>).r !== 'number' ||
+      targetPosition == null ||
+      typeof targetPosition !== 'object' ||
+      typeof (targetPosition as Record<string, unknown>).x !== 'number' ||
+      typeof (targetPosition as Record<string, unknown>).y !== 'number' ||
+      typeof movement.startedAt !== 'string' ||
+      typeof movement.arrivalAt !== 'string'
+    ) {
+      return null;
+    }
+
+    return {
+      targetHex: targetHex as HexCoords,
+      targetPosition: targetPosition as Vec2Local,
+      startedAt: movement.startedAt,
+      arrivalAt: movement.arrivalAt,
+    };
+  }
+
   private async onArrival(
     unitId: string,
     planetId: string,
@@ -169,9 +261,31 @@ export class UnitMovementService {
       return;
     }
 
+    await this.applyPlanetSurfacePosition(
+      unitId,
+      planetId,
+      targetHex,
+      targetPosition,
+      `Unit "${unitId}" arrived at hex (${targetHex.q},${targetHex.r}) on planet "${planetId}"`,
+    );
+  }
+
+  private async applyPlanetSurfacePosition(
+    unitId: string,
+    planetId: string,
+    targetHex: HexCoords,
+    targetPosition: Vec2Local,
+    logMessage: string,
+  ): Promise<void> {
+    const unit = await this.unitInstanceRepository.findOne({ where: { id: unitId } });
+    if (!unit) {
+      this.logger.warn(`applyPlanetSurfacePosition: unit "${unitId}" not found, skipping`);
+      return;
+    }
+
     const existingLocation = unit.location;
     if (!isPlayerLocationOnPlanet(existingLocation)) {
-      this.logger.warn(`onArrival: unit "${unitId}" is no longer at planet depth, skipping`);
+      this.logger.warn(`applyPlanetSurfacePosition: unit "${unitId}" is no longer at planet depth, skipping`);
       return;
     }
 
@@ -198,12 +312,10 @@ export class UnitMovementService {
     await this.unitInstanceRepository.save(unit);
 
     const updatedUnit = await this.unitInstanceRepository.findOne({ where: { id: unitId } });
-    const unitType = updatedUnit
-      ? await this.unitCatalogService.getUnitTypeById(updatedUnit.typeId)
-      : null;
+    const unitType = updatedUnit ? await this.unitCatalogService.getUnitTypeById(updatedUnit.typeId) : null;
 
     if (!updatedUnit || !unitType) {
-      this.logger.warn(`onArrival: could not reload unit "${unitId}" after update`);
+      this.logger.warn(`applyPlanetSurfacePosition: could not reload unit "${unitId}" after update`);
       return;
     }
 
@@ -234,6 +346,6 @@ export class UnitMovementService {
     const event: UnitMovementArrivedEvent = { unitId, planetId, unit: unitWithType };
     this.eventEmitter.emit(UNIT_MOVEMENT_EVENTS.ARRIVED, event);
 
-    this.logger.log(`Unit "${unitId}" arrived at hex (${targetHex.q},${targetHex.r}) on planet "${planetId}"`);
+    this.logger.log(logMessage);
   }
 }

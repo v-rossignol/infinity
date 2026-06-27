@@ -212,6 +212,8 @@ All routes are prefixed with **`/infinity`** (`src/main.ts`).
 | `/infinity/players/me/can-enter/system/:starSystemId` | GET | JWT |
 | `/infinity/players/me/can-enter/planet/:planetId` | GET | JWT |
 | `/infinity/players/me/units` | GET | JWT | List caller-owned unit instances (`UnitInstanceWithType[]`) |
+| `/infinity/players/me/units/:unitId/move` | POST | JWT | Order planet-surface unit movement |
+| `/infinity/players/me/units/:unitId/stop` | POST | JWT | Stop in-progress unit movement |
 | `/infinity/units?ownerId={uuid}` | GET | JWT + admin | List unit instances for any player |
 | `/infinity/cubes/:x/:y/:z` | GET | JWT |
 | `/infinity/cubes/:x/:y/:z/stars` | GET | JWT |

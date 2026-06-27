@@ -80,3 +80,120 @@ export function computePlanetSurfaceTravelMs(from: PlanetSurfacePoint, to: Plane
 
   return Math.round((distanceHexUnits / effectiveSpeed) * GAME_CONSTANTS.PLANET_BASE_MOVEMENT_MS_PER_HEX);
 }
+
+function isPointInPolygon(x: number, y: number, polygon: ReadonlyArray<Vec2Local>): boolean {
+  let inside = false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i, i += 1) {
+    const xi = polygon[i].x;
+    const yi = polygon[i].y;
+    const xj = polygon[j].x;
+    const yj = polygon[j].y;
+
+    const intersects = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi;
+    if (intersects) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
+
+function isHexLocalPointInside(position: Vec2Local): boolean {
+  return isPointInPolygon(position.x, position.y, HEX_VERTEX_FRACTIONS);
+}
+
+function hexLocalFromWorldOffset(worldPoint: Vec2Local, hex: HexCoords): Vec2Local {
+  const origin = axialToSurfacePoint(hex.q, hex.r);
+
+  return {
+    x: (worldPoint.x - origin.x) / GAME_CONSTANTS.PLANET_HEX_LAYOUT_WIDTH,
+    y: (worldPoint.y - origin.y) / GAME_CONSTANTS.PLANET_HEX_LAYOUT_HEIGHT,
+  };
+}
+
+function distanceToHexCenter(worldPoint: Vec2Local, hex: HexCoords): number {
+  const origin = axialToSurfacePoint(hex.q, hex.r);
+  const centerX = origin.x + GAME_CONSTANTS.PLANET_HEX_LAYOUT_WIDTH / 2;
+  const centerY = origin.y + GAME_CONSTANTS.PLANET_HEX_LAYOUT_HEIGHT / 2;
+
+  return Math.hypot(worldPoint.x - centerX, worldPoint.y - centerY);
+}
+
+export function computeMovementProgress(startAt: string, arrivalAt: string, nowMs: number): number {
+  const startMs = Date.parse(startAt);
+  const arrivalMs = Date.parse(arrivalAt);
+  if (!Number.isFinite(startMs) || !Number.isFinite(arrivalMs) || arrivalMs <= startMs) {
+    return 1;
+  }
+
+  return Math.min(1, Math.max(0, (nowMs - startMs) / (arrivalMs - startMs)));
+}
+
+export function computeMovementWorldPosition(
+  origin: PlanetSurfacePoint,
+  destination: PlanetSurfacePoint,
+  progress: number,
+): Vec2Local {
+  const from = planetSurfaceToWorldPoint(origin.hex, origin.position);
+  const to = planetSurfaceToWorldPoint(destination.hex, destination.position);
+
+  return {
+    x: from.x + (to.x - from.x) * progress,
+    y: from.y + (to.y - from.y) * progress,
+  };
+}
+
+/** Maps a continuous surface world point to the containing hex and in-hex position. */
+export function worldPointToPlanetSurfacePoint(worldPoint: Vec2Local): PlanetSurfacePoint {
+  const hexHeight = GAME_CONSTANTS.PLANET_HEX_LAYOUT_HEIGHT;
+  const hexWidth = GAME_CONSTANTS.PLANET_HEX_LAYOUT_WIDTH;
+  const verticalStep = hexVerticalStep(hexHeight);
+  const rGuess = Math.round(worldPoint.y / verticalStep);
+  const qGuess = Math.round((worldPoint.x - (rGuess % 2) * (hexWidth / 2)) / hexWidth);
+
+  for (let r = rGuess - 1; r <= rGuess + 1; r += 1) {
+    for (let q = qGuess - 1; q <= qGuess + 1; q += 1) {
+      const position = hexLocalFromWorldOffset(worldPoint, { q, r });
+      if (isHexLocalPointInside(position)) {
+        return { hex: { q, r }, position };
+      }
+    }
+  }
+
+  let bestHex: HexCoords = { q: qGuess, r: rGuess };
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (let r = rGuess - 1; r <= rGuess + 1; r += 1) {
+    for (let q = qGuess - 1; q <= qGuess + 1; q += 1) {
+      const distance = distanceToHexCenter(worldPoint, { q, r });
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestHex = { q, r };
+      }
+    }
+  }
+
+  const position = hexLocalFromWorldOffset(worldPoint, bestHex);
+
+  return {
+    hex: bestHex,
+    position: {
+      x: Math.min(1, Math.max(0, position.x)),
+      y: Math.min(1, Math.max(0, position.y)),
+    },
+  };
+}
+
+export function computeMovingUnitSurfacePointAtTime(
+  origin: PlanetSurfacePoint,
+  destination: PlanetSurfacePoint,
+  startedAt: string,
+  arrivalAt: string,
+  nowMs: number = Date.now(),
+): PlanetSurfacePoint {
+  const progress = computeMovementProgress(startedAt, arrivalAt, nowMs);
+  const worldPoint = computeMovementWorldPosition(origin, destination, progress);
+
+  return worldPointToPlanetSurfacePoint(worldPoint);
+}

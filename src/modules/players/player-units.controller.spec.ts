@@ -19,6 +19,7 @@ describe('PlayerUnitsController', () => {
 
   const mockUnitMovementService = {
     orderMove: jest.fn(),
+    orderStop: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -99,6 +100,40 @@ describe('PlayerUnitsController', () => {
 
       await expect(
         controller.moveUnit({ user: { id: 'user-1', username: 'player' } } as never, unitId, dto as never),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('stopUnit', () => {
+    const player = { id: 'player-uuid', userId: 'user-1' };
+    const unitId = 'unit-uuid';
+    const dto = { planetId: 'planet-1' };
+
+    it('returns the stop order result', async () => {
+      const result = { unitId, status: 'idle' as const };
+      mockPlayersService.findByUserId.mockResolvedValue(player);
+      mockUnitMovementService.orderStop.mockResolvedValue(result);
+
+      await expect(
+        controller.stopUnit({ user: { id: 'user-1', username: 'player' } } as never, unitId, dto as never),
+      ).resolves.toEqual(result);
+      expect(mockUnitMovementService.orderStop).toHaveBeenCalledWith(player.id, unitId, dto);
+    });
+
+    it('throws NotFoundException when player profile does not exist', async () => {
+      mockPlayersService.findByUserId.mockResolvedValue(null);
+
+      await expect(
+        controller.stopUnit({ user: { id: 'user-1', username: 'player' } } as never, unitId, dto as never),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('propagates service exceptions', async () => {
+      mockPlayersService.findByUserId.mockResolvedValue(player);
+      mockUnitMovementService.orderStop.mockRejectedValue(new ConflictException('Unit is not moving'));
+
+      await expect(
+        controller.stopUnit({ user: { id: 'user-1', username: 'player' } } as never, unitId, dto as never),
       ).rejects.toThrow(ConflictException);
     });
   });
