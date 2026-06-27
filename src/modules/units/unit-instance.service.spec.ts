@@ -53,7 +53,7 @@ describe('UnitInstanceService', () => {
     cubeId,
     starSystemId: null,
     planetId,
-    status: 'inactive',
+    status: 'idle',
     metadata: {},
     createdAt,
     updatedAt,
@@ -100,7 +100,7 @@ describe('UnitInstanceService', () => {
         typeId: SCOUT_X1.id,
         ownerId,
         location,
-        status: 'inactive',
+        status: 'idle',
         type: expect.objectContaining({
           id: SCOUT_X1.id,
           name: SCOUT_X1.name,
@@ -146,7 +146,7 @@ describe('UnitInstanceService', () => {
   });
 
   it('creates a planet unit with denormalized location fields', async () => {
-    const createdInstance = { ...instance, status: 'active' as const };
+    const createdInstance = { ...instance, status: 'idle' as const };
     unitInstanceRepository.create.mockReturnValue(createdInstance);
     unitInstanceRepository.save.mockResolvedValue(createdInstance);
 
@@ -166,7 +166,7 @@ describe('UnitInstanceService', () => {
         typeId: SCOUT_X1.id,
         ownerId,
         location,
-        status: 'active',
+        status: 'idle',
       }),
     );
 
@@ -178,7 +178,7 @@ describe('UnitInstanceService', () => {
         cubeId,
         planetId,
         starSystemId: null,
-        status: 'active',
+        status: 'idle',
       }),
     );
     expect(unitInstanceRepository.save).toHaveBeenCalledWith(createdInstance);

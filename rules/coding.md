@@ -1,7 +1,7 @@
 # Infinity Server Coding Rules
 
 ```yaml
-date: 2026-06-21
+date: 2026-06-26
 author: Roro LeSage
 model: GPT-5.5
 sources:
@@ -28,6 +28,7 @@ This document defines coding rules for the **Infinity Server** codebase. The rep
 - Use **Prettier** for formatting (`printWidth: 100`, `.prettierrc`).
 - Use **ESLint** with the repository configuration in `.eslintrc.js`.
 - Follow **EditorConfig** defaults in `.editorconfig` (LF line endings, UTF-8, 2-space indentation). Editors that support EditorConfig apply these settings on new and saved files.
+- **Line endings must be LF (`\n`), not CRLF (`\r\n`).** Prettier (via ESLint `prettier/prettier`) rejects Windows CRLF. If the linter reports `Delete ␍`, the file was saved with CRLF — run `npm run format` on the affected file(s), or re-save with LF (enable the EditorConfig extension in VS Code/Cursor). On Windows, avoid setting `"files.eol": "\r\n"` for this repository.
 - Do not introduce style rules from external guides unless they are added to the local ESLint configuration.
 - Run `npm run lint` and `npm run format` before committing when practical.
 - **Union types (`type` aliases):** let Prettier decide line breaks. Do not put every member on its own line with a leading `|` when the union fits on one line or can start on the same line as `=`. Prettier packs members until `printWidth`, then wraps the remainder with a leading `|` on the next line.

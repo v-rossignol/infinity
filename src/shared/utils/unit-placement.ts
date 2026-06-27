@@ -13,10 +13,7 @@ export class NoAllowedHexError extends Error {
   }
 }
 
-export function isBiomeAllowedForUnit(
-  biome: string,
-  environments: readonly string[],
-): boolean {
+export function isBiomeAllowedForUnit(biome: string, environments: readonly string[]): boolean {
   return environments.includes(biome);
 }
 

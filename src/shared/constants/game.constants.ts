@@ -13,4 +13,11 @@ export const GAME_CONSTANTS = {
   PLANET_TYPES: ['rocky', 'gas', 'ice', 'lava'] as const,
   HEX_BIOMES: ['desert', 'forest', 'ocean', 'mountain', 'ice', 'volcanic', 'plain'] as const,
   RESOURCE_RARITIES: ['common', 'rare', 'epic', 'legendary'] as const,
+  // Pointy-top odd-r layout (matches terra-view hexLayout DEFAULT_HEX_LAYOUT).
+  PLANET_HEX_LAYOUT_WIDTH: 80,
+  PLANET_HEX_LAYOUT_HEIGHT: 92,
+  // Speed multiplier base for planet-surface vehicles.
+  // speed=1 means 1 hex per 2 minutes (calibrated as the time to cross the largest
+  // distance within a single hex at standard speed).
+  PLANET_BASE_MOVEMENT_MS_PER_HEX: 120_000,
 } as const;

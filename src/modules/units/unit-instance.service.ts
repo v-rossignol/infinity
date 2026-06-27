@@ -85,7 +85,7 @@ export class UnitInstanceService {
       typeId: params.typeId,
       ownerId: params.ownerId,
       location,
-      status: 'active',
+      status: 'idle',
       metadata: {},
       ...denormalized,
     });
@@ -94,9 +94,7 @@ export class UnitInstanceService {
     return this.toUnitInstanceWithType(saved, unitType);
   }
 
-  private async mapInstancesWithType(
-    instances: UnitInstance[],
-  ): Promise<UnitInstanceWithType[]> {
+  private async mapInstancesWithType(instances: UnitInstance[]): Promise<UnitInstanceWithType[]> {
     const results: UnitInstanceWithType[] = [];
 
     for (const instance of instances) {
@@ -114,10 +112,7 @@ export class UnitInstanceService {
     return results;
   }
 
-  private toUnitInstanceWithType(
-    instance: UnitInstance,
-    unitType: UnitType,
-  ): UnitInstanceWithType {
+  private toUnitInstanceWithType(instance: UnitInstance, unitType: UnitType): UnitInstanceWithType {
     return {
       id: instance.id,
       typeId: instance.typeId,

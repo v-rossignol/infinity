@@ -4,6 +4,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -12,6 +13,10 @@ import {
   SubscribeMessage,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import {
+  UNIT_MOVEMENT_EVENTS,
+  UnitMovementArrivedEvent,
+} from '../units/unit-movement.service';
 import { resolveCubeCenterFromGlobal } from '../../shared/utils/coordinates';
 import { CubeService } from '../galaxy/cube.service';
 import { GalaxyService } from '../galaxy/galaxy.service';
@@ -20,6 +25,7 @@ import { PlanetsService } from '../planets/planets.service';
 import { GALAXY_EVENTS, getCubeRoomName } from './events/galaxy.events';
 import { PLANET_EVENTS } from './events/planet.events';
 import { SYSTEM_EVENTS } from './events/system.events';
+import { UNIT_EVENTS } from './events/unit.events';
 import { SocketPlayerAuthService } from './socket-player-auth.service';
 
 @WebSocketGateway({ namespace: '/' })
@@ -188,6 +194,15 @@ export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } catch (error) {
       this.handleSystemHandlerError(client, SYSTEM_EVENTS.MOVE, error);
     }
+  }
+
+  @OnEvent(UNIT_MOVEMENT_EVENTS.ARRIVED)
+  handleUnitMovementArrived(event: UnitMovementArrivedEvent): void {
+    this.server.to(event.planetId).emit(UNIT_EVENTS.UPDATE, {
+      unitId: event.unitId,
+      status: event.unit.status,
+      location: event.unit.location,
+    });
   }
 
   private async resolvePlayerId(client: Socket): Promise<string> {

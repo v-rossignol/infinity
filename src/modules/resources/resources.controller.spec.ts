@@ -56,9 +56,7 @@ describe('ResourcesController (integration)', () => {
   it('GET /infinity/resources/planet/:planetId returns planet resource nodes', async () => {
     mockResourcesService.findByPlanetId.mockResolvedValue([]);
 
-    await request(app.getHttpServer())
-      .get('/infinity/resources/planet/star-uuid-p1')
-      .expect(200);
+    await request(app.getHttpServer()).get('/infinity/resources/planet/star-uuid-p1').expect(200);
 
     expect(mockResourcesService.findByPlanetId).toHaveBeenCalledWith('star-uuid-p1');
   });

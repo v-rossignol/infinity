@@ -1,7 +1,7 @@
 import { Location } from './player-location.interface';
 import { UnitTypeDefinition } from './unit-type.interface';
 
-export const UNIT_INSTANCE_STATUSES = ['inactive', 'active', 'destroyed'] as const;
+export const UNIT_INSTANCE_STATUSES = ['idle', 'moving', 'inactive', 'active', 'destroyed'] as const;
 export type UnitInstanceStatus = (typeof UNIT_INSTANCE_STATUSES)[number];
 
 export const UNIT_PLACE_LEVELS = ['cube', 'starSystem', 'planet'] as const;

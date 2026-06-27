@@ -54,7 +54,7 @@ export class UnitInstance {
   @Column({ type: 'varchar', nullable: true, default: null })
   planetId: string | null;
 
-  @Column({ type: 'varchar', default: 'inactive' })
+  @Column({ type: 'varchar', default: 'idle' })
   status: UnitInstanceStatus;
 
   @Column({ type: 'jsonb', default: {} })

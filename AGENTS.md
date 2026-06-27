@@ -179,6 +179,7 @@ Constants live in `src/modules/socket/events/`. Add new events there and in `src
 ### Style
 
 - Run `npm run lint` and `npm run format` before committing
+- Use **LF line endings** only (see `.editorconfig`). ESLint `Delete ␍` means CRLF — run `npm run format` or re-save with LF
 - Keep functions small and focused; extract reusable logic to `src/shared/utils/`
 - Comments in **English** for code; documentation files may remain in French
 

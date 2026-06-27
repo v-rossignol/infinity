@@ -173,9 +173,7 @@ describe('PlayerLocationService', () => {
     it('canEnterPlanet returns false when player is on another planet', async () => {
       repository.findOneBy.mockResolvedValue(savePlayer(planetDepth));
 
-      await expect(service.canEnterPlanet(playerId, `${starSystemId}-p2`)).resolves.toBe(
-        false,
-      );
+      await expect(service.canEnterPlanet(playerId, `${starSystemId}-p2`)).resolves.toBe(false);
     });
   });
 

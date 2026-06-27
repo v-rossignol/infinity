@@ -1,8 +1,4 @@
-import {
-  UNIT_CATEGORIES,
-  UNIT_RULE_RANGES,
-  UNIT_SIZES,
-} from '../constants/unit.constants';
+import { UNIT_CATEGORIES, UNIT_RULE_RANGES, UNIT_SIZES } from '../constants/unit.constants';
 
 export type UnitCategory = (typeof UNIT_CATEGORIES)[number];
 export type UnitSize = (typeof UNIT_SIZES)[number];

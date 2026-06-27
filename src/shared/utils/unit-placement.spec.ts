@@ -28,10 +28,7 @@ describe('unit-placement', () => {
 
   describe('filterAllowedHexes', () => {
     it('keeps only hexagons whose biome is allowed', () => {
-      expect(filterAllowedHexes(hexagons, scoutEnvironments)).toEqual([
-        hexagons[1],
-        hexagons[2],
-      ]);
+      expect(filterAllowedHexes(hexagons, scoutEnvironments)).toEqual([hexagons[1], hexagons[2]]);
     });
   });
 
@@ -41,12 +38,9 @@ describe('unit-placement', () => {
     });
 
     it('throws when no hex is allowed', () => {
-      expect(() =>
-        pickRandomAllowedHex(
-          [{ ...hexagons[0] }],
-          scoutEnvironments,
-        ),
-      ).toThrow(NoAllowedHexError);
+      expect(() => pickRandomAllowedHex([{ ...hexagons[0] }], scoutEnvironments)).toThrow(
+        NoAllowedHexError,
+      );
     });
   });
 

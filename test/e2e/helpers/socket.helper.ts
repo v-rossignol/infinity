@@ -1,8 +1,10 @@
 import { io, Socket } from 'socket.io-client';
+import { SOCKET_IO_PATH } from '../../../src/config/socket.config';
 
 export const connectSocket = (port: number, token?: string): Promise<Socket> =>
   new Promise((resolve, reject) => {
     const socket = io(`http://127.0.0.1:${port}`, {
+      path: SOCKET_IO_PATH,
       transports: ['websocket'],
       auth: token ? { token } : undefined,
     });
