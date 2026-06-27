@@ -76,4 +76,15 @@ describe('planet-surface-travel', () => {
     expect(mapped.position.x).toBeCloseTo(surface.position.x);
     expect(mapped.position.y).toBeCloseTo(surface.position.y);
   });
+
+  it('uses toroidal wrapping for vertically adjacent hexes on a radius-13 planet', () => {
+    const from = { hex: { q: 8, r: 0 }, position: { x: 0.5, y: 0.5 } };
+    const to = { hex: { q: 8, r: 13 }, position: { x: 0.5, y: 0.5 } };
+    const adjacent = { hex: { q: 8, r: 1 }, position: { x: 0.5, y: 0.5 } };
+
+    expect(computePlanetSurfaceTravelDistance(from, to, 13)).toBeCloseTo(
+      computePlanetSurfaceTravelDistance(from, adjacent, 13),
+      5,
+    );
+  });
 });

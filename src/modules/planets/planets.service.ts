@@ -48,6 +48,15 @@ export class PlanetsService {
     return this.createPlanetFromSummary(planetId, starSystemId);
   }
 
+  async getPlanetRadius(planetId: string): Promise<number> {
+    const planet = await this.planetModel.findById(planetId).select('radius').exec();
+    if (!planet) {
+      throw new NotFoundException(`Planet "${planetId}" not found`);
+    }
+
+    return planet.radius;
+  }
+
   async joinPlanet(playerId: string, planetId: string) {
     const planet = await this.planetModel.findById(planetId).exec();
     if (!planet) {

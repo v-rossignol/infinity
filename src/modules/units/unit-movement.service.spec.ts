@@ -1,8 +1,10 @@
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { getModelToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { buildUnitPlanetLocation } from '../../shared/utils/player-location';
+import { Planet } from '../planets/entities/planet.schema';
 import { SCOUT_X1 } from './constants/unit-catalog';
 import { UnitInstance } from './entities/unit-instance.entity';
 import { UnitType } from './entities/unit-type.entity';
@@ -20,6 +22,10 @@ describe('UnitMovementService', () => {
 
   const unitCatalogService = {
     getUnitTypeById: jest.fn(),
+  };
+
+  const planetModel = {
+    findById: jest.fn(),
   };
 
   const eventEmitter = {
@@ -85,15 +91,46 @@ describe('UnitMovementService', () => {
     };
   }
 
+  function buildIdleUnit(hex_coords: { q: number; r: number }): UnitInstance {
+    return {
+      id: unitId,
+      typeId: SCOUT_X1.id,
+      unitType: {} as UnitType,
+      ownerId,
+      owner: {} as never,
+      location: buildUnitPlanetLocation({
+        cubeId,
+        starSystemId,
+        planetId,
+        hex_coords,
+        position: { x: 0.5, y: 0.5 },
+      }),
+      placeLevel: 'planet',
+      cubeId,
+      starSystemId,
+      planetId,
+      status: 'idle',
+      metadata: {},
+      createdAt,
+      updatedAt,
+    };
+  }
+
   beforeEach(async () => {
     jest.clearAllMocks();
     jest.spyOn(Date, 'now').mockReturnValue(Date.parse('2026-01-01T00:05:00.000Z'));
+    planetModel.findById.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        exec: jest.fn().mockResolvedValue({ radius: 13 }),
+      }),
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UnitMovementService,
         { provide: getRepositoryToken(UnitInstance), useValue: unitInstanceRepository },
         { provide: UnitCatalogService, useValue: unitCatalogService },
+        { provide: getModelToken(Planet.name), useValue: planetModel },
         { provide: EventEmitter2, useValue: eventEmitter },
       ],
     }).compile();
@@ -103,6 +140,42 @@ describe('UnitMovementService', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  describe('orderMove', () => {
+    it('allows a toroidally adjacent target that is far in flat axial distance', async () => {
+      const unit = buildIdleUnit({ q: 8, r: 0 });
+      unitInstanceRepository.findOne.mockResolvedValue(unit);
+      unitInstanceRepository.update.mockResolvedValue(undefined);
+      unitCatalogService.getUnitTypeById.mockResolvedValue(unitType);
+
+      await expect(
+        service.orderMove(ownerId, unitId, {
+          planetId,
+          targetHex: { q: 8, r: 13 },
+        }),
+      ).resolves.toEqual(
+        expect.objectContaining({
+          unitId,
+          status: 'moving',
+        }),
+      );
+
+      expect(unitInstanceRepository.update).toHaveBeenCalled();
+    });
+
+    it('rejects a target outside toroidal move range', async () => {
+      const unit = buildIdleUnit({ q: 8, r: 0 });
+      unitInstanceRepository.findOne.mockResolvedValue(unit);
+      unitCatalogService.getUnitTypeById.mockResolvedValue(unitType);
+
+      await expect(
+        service.orderMove(ownerId, unitId, {
+          planetId,
+          targetHex: { q: 8, r: 11 },
+        }),
+      ).rejects.toThrow(UnprocessableEntityException);
+    });
   });
 
   describe('orderStop', () => {

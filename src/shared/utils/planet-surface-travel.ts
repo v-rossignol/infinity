@@ -20,6 +20,32 @@ function hexVerticalStep(hexHeight: number): number {
   return hexHeight * 0.75;
 }
 
+function getToroidalSurfaceOffset(fromWorld: Vec2Local, toWorld: Vec2Local, radius: number): Vec2Local {
+  const dx = toWorld.x - fromWorld.x;
+  const dy = toWorld.y - fromWorld.y;
+  const gridWidth = radius * GAME_CONSTANTS.PLANET_HEX_LAYOUT_WIDTH;
+  const gridHeight = (radius + 1) * hexVerticalStep(GAME_CONSTANTS.PLANET_HEX_LAYOUT_HEIGHT);
+
+  let bestX = dx;
+  let bestY = dy;
+  let bestDistance = Math.hypot(dx, dy);
+
+  for (const xShift of [-gridWidth, 0, gridWidth]) {
+    for (const yShift of [-gridHeight, 0, gridHeight]) {
+      const shiftedX = dx + xShift;
+      const shiftedY = dy + yShift;
+      const distance = Math.hypot(shiftedX, shiftedY);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestX = shiftedX;
+        bestY = shiftedY;
+      }
+    }
+  }
+
+  return { x: bestX, y: bestY };
+}
+
 function axialToSurfacePoint(q: number, r: number): Vec2Local {
   const hexWidth = GAME_CONSTANTS.PLANET_HEX_LAYOUT_WIDTH;
   const hexHeight = GAME_CONSTANTS.PLANET_HEX_LAYOUT_HEIGHT;
@@ -66,17 +92,30 @@ export function getMaxIntraHexDistance(): number {
 }
 
 /** Returns travel distance in hex units (1 = largest distance within a single hex). */
-export function computePlanetSurfaceTravelDistance(from: PlanetSurfacePoint, to: PlanetSurfacePoint): number {
+export function computePlanetSurfaceTravelDistance(
+  from: PlanetSurfacePoint,
+  to: PlanetSurfacePoint,
+  radius?: number,
+): number {
   const fromWorld = planetSurfaceToWorldPoint(from.hex, from.position);
   const toWorld = planetSurfaceToWorldPoint(to.hex, to.position);
-  const worldDistance = Math.hypot(toWorld.x - fromWorld.x, toWorld.y - fromWorld.y);
+  const offset =
+    radius != null && radius > 0
+      ? getToroidalSurfaceOffset(fromWorld, toWorld, radius)
+      : { x: toWorld.x - fromWorld.x, y: toWorld.y - fromWorld.y };
+  const worldDistance = Math.hypot(offset.x, offset.y);
 
   return worldDistance / getMaxIntraHexDistance();
 }
 
-export function computePlanetSurfaceTravelMs(from: PlanetSurfacePoint, to: PlanetSurfacePoint, speed: number): number {
+export function computePlanetSurfaceTravelMs(
+  from: PlanetSurfacePoint,
+  to: PlanetSurfacePoint,
+  speed: number,
+  radius?: number,
+): number {
   const effectiveSpeed = speed > 0 ? speed : 1;
-  const distanceHexUnits = computePlanetSurfaceTravelDistance(from, to);
+  const distanceHexUnits = computePlanetSurfaceTravelDistance(from, to, radius);
 
   return Math.round((distanceHexUnits / effectiveSpeed) * GAME_CONSTANTS.PLANET_BASE_MOVEMENT_MS_PER_HEX);
 }
@@ -134,13 +173,18 @@ export function computeMovementWorldPosition(
   origin: PlanetSurfacePoint,
   destination: PlanetSurfacePoint,
   progress: number,
+  radius?: number,
 ): Vec2Local {
   const from = planetSurfaceToWorldPoint(origin.hex, origin.position);
   const to = planetSurfaceToWorldPoint(destination.hex, destination.position);
+  const offset =
+    radius != null && radius > 0
+      ? getToroidalSurfaceOffset(from, to, radius)
+      : { x: to.x - from.x, y: to.y - from.y };
 
   return {
-    x: from.x + (to.x - from.x) * progress,
-    y: from.y + (to.y - from.y) * progress,
+    x: from.x + offset.x * progress,
+    y: from.y + offset.y * progress,
   };
 }
 
@@ -191,9 +235,10 @@ export function computeMovingUnitSurfacePointAtTime(
   startedAt: string,
   arrivalAt: string,
   nowMs: number = Date.now(),
+  radius?: number,
 ): PlanetSurfacePoint {
   const progress = computeMovementProgress(startedAt, arrivalAt, nowMs);
-  const worldPoint = computeMovementWorldPosition(origin, destination, progress);
+  const worldPoint = computeMovementWorldPosition(origin, destination, progress, radius);
 
   return worldPointToPlanetSurfacePoint(worldPoint);
 }

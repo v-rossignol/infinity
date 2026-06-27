@@ -4,6 +4,10 @@
 date: 2026-06-26
 author: Roro LeSage
 model: GPT-5.5
+modified:
+  - date: 2026-06-27
+    author: Composer
+    model: composer-2.5-fast
 sources:
 - "user input"
 ```
@@ -90,6 +94,8 @@ This document defines coding rules for the **Infinity Server** codebase. The rep
 - Register feature modules through `src/app.module.ts`.
 - Export providers only when another module needs them.
 - Avoid lazy-loading language unless it is implemented in the codebase for a specific module.
+- **Avoid circular module dependencies.** Do not import module A into module B if B (directly or through other imports) already loads A. When two modules must reference each other, use `forwardRef()` on **both** sides — but prefer breaking the cycle instead (e.g. inject a Mongoose model or a small shared provider rather than importing a full feature module).
+- **After coding module or import changes, verify that no circular dependency exists.** Boot the application (`npm run start:dev` or `npm run build` followed by starting the compiled app) and confirm Nest starts without `UndefinedModuleException` or “The module at index [N] of the … imports array is undefined”. If a cycle is reported, refactor imports before committing.
 
 ### 3.2 Dependency Injection
 

@@ -7,14 +7,22 @@ import {
   UnprocessableEntityException,
 } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { InjectModel } from '@nestjs/mongoose';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Model } from 'mongoose';
 import { Repository } from 'typeorm';
 import { HexCoords, Vec2Local } from '../../shared/interfaces/player-location.interface';
 import { UnitInstanceWithType } from '../../shared/interfaces/unit-instance.interface';
 import { buildUnitPlanetLocation, isPlayerLocationOnPlanet } from '../../shared/utils/player-location';
 import { computeDenormalizedFields } from '../../shared/utils/unit-instance-location';
-import { hexDistance } from '../../shared/utils/hex-grid';
-import { computePlanetSurfaceTravelDistance, computePlanetSurfaceTravelMs, computeMovingUnitSurfacePointAtTime } from '../../shared/utils/planet-surface-travel';
+import { toroidalHexDistance } from '../../shared/utils/hex-grid';
+import { getPlanetGridHeight } from '../../shared/utils/planet-surface-generation';
+import {
+  computePlanetSurfaceTravelDistance,
+  computePlanetSurfaceTravelMs,
+  computeMovingUnitSurfacePointAtTime,
+} from '../../shared/utils/planet-surface-travel';
+import { Planet } from '../planets/entities/planet.schema';
 import { UnitInstance } from './entities/unit-instance.entity';
 import { UnitCatalogService } from './unit-catalog.service';
 import { MoveUnitDto } from './dto/move-unit.dto';
@@ -70,6 +78,8 @@ export class UnitMovementService {
     private readonly unitInstanceRepository: Repository<UnitInstance>,
     private readonly unitCatalogService: UnitCatalogService,
     private readonly eventEmitter: EventEmitter2,
+    @InjectModel(Planet.name)
+    private readonly planetModel: Model<Planet>,
   ) {}
 
   async orderMove(playerId: string, unitId: string, dto: MoveUnitDto): Promise<MoveOrderResult> {
@@ -105,7 +115,9 @@ export class UnitMovementService {
     }
 
     const currentHex = currentLocation.planet.hex_coords;
-    const hexStepDistance = hexDistance(currentHex, dto.targetHex);
+    const planetRadius = await this.resolvePlanetRadius(dto.planetId);
+    const gridHeight = getPlanetGridHeight(planetRadius);
+    const hexStepDistance = toroidalHexDistance(currentHex, dto.targetHex, planetRadius, gridHeight);
 
     const rangeRule = unitType.rules.find((r) => r.range === 'hexagon');
     const maxRange = rangeRule?.value ?? 1;
@@ -121,8 +133,8 @@ export class UnitMovementService {
     const speed = unitType.speed ?? 1;
     const origin: MoveSurfacePoint = { hex: currentHex, position: currentPosition };
     const destination: MoveSurfacePoint = { hex: dto.targetHex, position: targetPosition };
-    const distance = computePlanetSurfaceTravelDistance(origin, destination);
-    const travelMs = computePlanetSurfaceTravelMs(origin, destination, speed);
+    const distance = computePlanetSurfaceTravelDistance(origin, destination, planetRadius);
+    const travelMs = computePlanetSurfaceTravelMs(origin, destination, speed, planetRadius);
 
     const startedAt = new Date();
     const arrivalAt = new Date(startedAt.getTime() + travelMs);
@@ -194,11 +206,14 @@ export class UnitMovementService {
       hex: movement.targetHex,
       position: movement.targetPosition,
     };
+    const planetRadius = await this.resolvePlanetRadius(dto.planetId);
     const currentSurface = computeMovingUnitSurfacePointAtTime(
       origin,
       destination,
       movement.startedAt,
       movement.arrivalAt,
+      Date.now(),
+      planetRadius,
     );
 
     await this.applyPlanetSurfacePosition(
@@ -210,6 +225,15 @@ export class UnitMovementService {
     );
 
     return { unitId, status: 'idle' };
+  }
+
+  private async resolvePlanetRadius(planetId: string): Promise<number> {
+    const planet = await this.planetModel.findById(planetId).select('radius').exec();
+    if (!planet) {
+      throw new NotFoundException(`Planet "${planetId}" not found`);
+    }
+
+    return planet.radius;
   }
 
   private parseMovementMetadata(metadata: Record<string, unknown>): MovementMetadata | null {
