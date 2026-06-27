@@ -30,6 +30,7 @@ import { StarService } from '../galaxy/star.service';
 import { StarSystemService } from '../systems/star-system.service';
 import { PlanetsService } from '../planets/planets.service';
 import { parseStarSystemIdFromPlanetId } from '../../shared/utils/planet-id';
+import { UnitInstanceService } from '../units/unit-instance.service';
 import { Player } from './entities/player.entity';
 
 export interface LocationTransitionOptions {
@@ -49,6 +50,7 @@ export class PlayerLocationService {
     private readonly starSystemService: StarSystemService,
     @Inject(forwardRef(() => PlanetsService))
     private readonly planetsService: PlanetsService,
+    private readonly unitInstanceService: UnitInstanceService,
   ) {}
 
   async getLocation(playerId: string): Promise<PlayerLocation | null> {
@@ -78,12 +80,7 @@ export class PlayerLocationService {
       return true;
     }
 
-    const player = await this.findPlayerOrThrow(playerId);
-    if (!player.location || !('starSystem' in player.location)) {
-      return false;
-    }
-
-    return player.location.starSystem.id === starSystemId;
+    return this.unitInstanceService.ownerHasUnitsInStarSystem(playerId, starSystemId);
   }
 
   async canEnterPlanet(

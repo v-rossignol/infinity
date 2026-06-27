@@ -6,7 +6,7 @@ import { UnitInstanceWithType } from '../../shared/interfaces/unit-instance.inte
 import { UnitTypeDefinition } from '../../shared/interfaces/unit-type.interface';
 import { buildUnitPlanetLocation } from '../../shared/utils/player-location';
 import { computeDenormalizedFields } from '../../shared/utils/unit-instance-location';
-import { PlayersService } from '../players/players.service';
+import { Player } from '../players/entities/player.entity';
 import { UnitInstance } from './entities/unit-instance.entity';
 import { UnitType } from './entities/unit-type.entity';
 import { UnitCatalogService } from './unit-catalog.service';
@@ -18,8 +18,9 @@ export class UnitInstanceService {
   constructor(
     @InjectRepository(UnitInstance)
     private readonly unitInstanceRepository: Repository<UnitInstance>,
+    @InjectRepository(Player)
+    private readonly playersRepository: Repository<Player>,
     private readonly unitCatalogService: UnitCatalogService,
-    private readonly playersService: PlayersService,
   ) {}
 
   async listByOwner(ownerId: string): Promise<UnitInstanceWithType[]> {
@@ -49,8 +50,16 @@ export class UnitInstanceService {
     return this.mapInstancesWithType(instances);
   }
 
+  async ownerHasUnitsInStarSystem(ownerId: string, starSystemId: string): Promise<boolean> {
+    const count = await this.unitInstanceRepository.count({
+      where: { ownerId, placeLevel: 'starSystem', starSystemId },
+    });
+
+    return count > 0;
+  }
+
   async listByOwnerForAdmin(ownerId: string): Promise<UnitInstanceWithType[]> {
-    const player = await this.playersService.findById(ownerId);
+    const player = await this.playersRepository.findOneBy({ id: ownerId });
     if (!player) {
       throw new NotFoundException('Player not found');
     }

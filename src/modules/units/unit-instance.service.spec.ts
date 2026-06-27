@@ -6,7 +6,7 @@ import { UnitInstance } from './entities/unit-instance.entity';
 import { UnitType } from './entities/unit-type.entity';
 import { UnitCatalogService } from './unit-catalog.service';
 import { UnitInstanceService } from './unit-instance.service';
-import { PlayersService } from '../players/players.service';
+import { Player } from '../players/entities/player.entity';
 import { buildUnitPlanetLocation } from '../../shared/utils/player-location';
 
 describe('UnitInstanceService', () => {
@@ -14,6 +14,7 @@ describe('UnitInstanceService', () => {
 
   const unitInstanceRepository = {
     find: jest.fn(),
+    count: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
   };
@@ -22,8 +23,8 @@ describe('UnitInstanceService', () => {
     getUnitTypeById: jest.fn(),
   };
 
-  const playersService = {
-    findById: jest.fn(),
+  const playersRepository = {
+    findOneBy: jest.fn(),
   };
 
   const ownerId = '773e8400-e29b-41d4-a716-446655440003';
@@ -83,8 +84,8 @@ describe('UnitInstanceService', () => {
       providers: [
         UnitInstanceService,
         { provide: getRepositoryToken(UnitInstance), useValue: unitInstanceRepository },
+        { provide: getRepositoryToken(Player), useValue: playersRepository },
         { provide: UnitCatalogService, useValue: unitCatalogService },
-        { provide: PlayersService, useValue: playersService },
       ],
     }).compile();
 
@@ -132,8 +133,23 @@ describe('UnitInstanceService', () => {
     });
   });
 
+  it('returns true when owner has star-system-level units in the target system', async () => {
+    unitInstanceRepository.count.mockResolvedValue(2);
+
+    await expect(service.ownerHasUnitsInStarSystem(ownerId, starSystemId)).resolves.toBe(true);
+    expect(unitInstanceRepository.count).toHaveBeenCalledWith({
+      where: { ownerId, placeLevel: 'starSystem', starSystemId },
+    });
+  });
+
+  it('returns false when owner has no star-system-level units in the target system', async () => {
+    unitInstanceRepository.count.mockResolvedValue(0);
+
+    await expect(service.ownerHasUnitsInStarSystem(ownerId, starSystemId)).resolves.toBe(false);
+  });
+
   it('throws when admin owner lookup misses a player', async () => {
-    playersService.findById.mockResolvedValue(null);
+    playersRepository.findOneBy.mockResolvedValue(null);
 
     await expect(service.listByOwnerForAdmin(ownerId)).rejects.toThrow(NotFoundException);
   });

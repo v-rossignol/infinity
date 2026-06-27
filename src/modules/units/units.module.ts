@@ -1,6 +1,6 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { PlayersModule } from '../players/players.module';
+import { Player } from '../players/entities/player.entity';
 import { UnitInstance } from './entities/unit-instance.entity';
 import { UnitType } from './entities/unit-type.entity';
 import { UnitCatalogService } from './unit-catalog.service';
@@ -9,7 +9,7 @@ import { UnitMovementService } from './unit-movement.service';
 import { UnitInstancesController } from './unit-instances.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UnitType, UnitInstance]), forwardRef(() => PlayersModule)],
+  imports: [TypeOrmModule.forFeature([UnitType, UnitInstance, Player])],
   controllers: [UnitInstancesController],
   providers: [UnitCatalogService, UnitInstanceService, UnitMovementService],
   exports: [UnitCatalogService, UnitInstanceService, UnitMovementService],
